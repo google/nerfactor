@@ -5,9 +5,8 @@
 ![teaser](assets/teaser.png)
 
 This is the authors' code release for:
-> **NeRFactor**  
-> Xiuming Zhang, Pratul P. Srinivasan, Boyang Deng, Paul Debevec,
-> William T. Freeman, Jonathan T. Barron
+> **Neural Factorization of Shape and Reflectance under an Unknown Illumination**  
+> Xiuming Zhang, Pratul P. Srinivasan, Boyang Deng, Paul Debevec, William T. Freeman, Jonathan T. Barron
 > **arXiv**
 
 This is not an officially supported Google product.
@@ -23,4 +22,4 @@ reader. Otherwise, email [Xiuming Zhang](http://people.csail.mit.edu/xiuming).
 
 ## Changelog
 
-* 08/07/2020: Initial release.
+* TODO/TODO/2021: Initial release.
