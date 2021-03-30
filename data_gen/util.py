@@ -15,11 +15,9 @@
 from io import BytesIO
 import numpy as np
 
-from google3.pyglib import gfile
-
 
 def save_npz(dict_, path):
-    with gfile.Open(path, 'wb') as h:
+    with open(path, 'wb') as h:
         io_buffer = BytesIO()
         np.savez(io_buffer, **dict_)
         h.write(io_buffer.getvalue())

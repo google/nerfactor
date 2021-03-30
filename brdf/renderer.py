@@ -17,7 +17,7 @@
 from os.path import join
 import numpy as np
 
-from google3.experimental.users.xiuming.xiuminglib import xiuminglib as xm
+from third_party.xiuminglib import xiuminglib as xm
 
 
 class SphereRenderer:

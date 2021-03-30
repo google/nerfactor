@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,25 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+from importlib import import_module
 
-if [ $# -lt 4 ]; then
-    echo "Usage: $0 scene_dir h n_vali outroot[ ...]"
-    exit 1
-fi
-scene_dir="$1"
-h="$2"
-n_vali="$3"
-outroot="$4"
-shift # shift the remaining arguments
-shift
-shift
-shift
 
-PYTHONPATH="$REPO_DIR" \
-    python "$REPO_DIR"/data_gen/real/make_dataset.py \
-    --scene_dir="$scene_dir" \
-    --h="$h" \
-    --n_vali="$n_vali" \
-    --outroot="$outroot" \
-    "$@"
+def get_model_class(name):
+    mod = import_module('models.' + name)
+    return mod.Model

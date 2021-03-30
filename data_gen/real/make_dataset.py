@@ -17,14 +17,14 @@ import numpy as np
 from tqdm import tqdm
 from absl import app, flags
 
-from google3.experimental.users.xiuming.xiuminglib import xiuminglib as xm
+from third_party.xiuminglib import xiuminglib as xm
 
 
-flags.DEFINE_string('colmap_dir', '', "")
-flags.DEFINE_integer('h', 512, "")
-flags.DEFINE_integer('n_vali', 2, "")
-flags.DEFINE_string('out_root', '', "")
-flags.DEFINE_boolean('masked', False, "")
+flags.DEFINE_string('scene_dir', '', "scene directory")
+flags.DEFINE_integer('h', 512, "output image height")
+flags.DEFINE_integer('n_vali', 2, "number of held-out validation views")
+flags.DEFINE_string('outroot', '', "output root")
+flags.DEFINE_boolean('debug', False, "debug toggle")
 FLAGS = flags.FLAGS
 
 
@@ -32,29 +32,27 @@ def main(_):
     view_folder = '{mode}_{i:03d}'
 
     # Only the original NeRF and JaxNeRF implementations need these
-    train_json = join(FLAGS.out_root, 'transforms_train.json')
-    vali_json = join(FLAGS.out_root, 'transforms_val.json')
-    test_json = join(FLAGS.out_root, 'transforms_test.json')
+    train_json = join(FLAGS.outroot, 'transforms_train.json')
+    vali_json = join(FLAGS.outroot, 'transforms_val.json')
+    test_json = join(FLAGS.outroot, 'transforms_test.json')
 
     # ------ Training and validation
 
     # Load poses
-    poses_path = join(FLAGS.colmap_dir, 'poses_bounds.npy')
+    poses_path = join(FLAGS.scene_dir, 'poses_bounds.npy')
     poses_arr = xm.io.np.read_or_write(poses_path)
     poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])
     bds = poses_arr[:, -2:].transpose([1, 0])
 
     # Load and resize images
-    if FLAGS.masked:
-        img_dir = join(FLAGS.colmap_dir, 'images_masked')
-        ext = '.png'
-    else:
-        img_dir = join(FLAGS.colmap_dir, 'images')
-        ext = '.jpg'
-    img_paths = xm.os.sortglob(img_dir, '*' + ext, ext_ignore_case=True)
-    #img_paths =img_paths[:4]
-    #poses=poses[..., :4]
-    #bds=poses[...,:4]
+    img_dir = join(FLAGS.scene_dir, 'images')
+    img_paths = xm.os.sortglob(
+        img_dir, filename='*', ext='jpg', ext_ignore_case=True)
+    assert img_paths, "No image globbed"
+    if FLAGS.debug:
+        img_paths = img_paths[:4]
+        poses = poses[..., :4]
+        bds = bds[..., :4]
     imgs = []
     factor = None
     for img_file in tqdm(img_paths, desc="Loading images"):
@@ -117,7 +115,7 @@ def main(_):
         # Write image
         img = imgs[i, :, :, :]
         xm.io.img.write_float(
-            img, join(FLAGS.out_root, view_folder_, 'rgba.png'), clip=True)
+            img, join(FLAGS.outroot, view_folder_, 'rgba.png'), clip=True)
         # Record metadata
         pose = poses[i, :, :]
         c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
@@ -133,7 +131,7 @@ def main(_):
             'imw': img.shape[1], 'scene': '', 'spp': 0,
             'original_path': img_paths[i]}
         xm.io.json.write(
-            frame_meta, join(FLAGS.out_root, view_folder_, 'metadata.json'))
+            frame_meta, join(FLAGS.outroot, view_folder_, 'metadata.json'))
 
     # Validation views
     vali_meta = {'camera_angle_x': cam_angle_x, 'frames': []}
@@ -142,7 +140,7 @@ def main(_):
         # Write image
         img = imgs[i, :, :, :]
         xm.io.img.write_float(
-            img, join(FLAGS.out_root, view_folder_, 'rgba.png'), clip=True)
+            img, join(FLAGS.outroot, view_folder_, 'rgba.png'), clip=True)
         # Record metadata
         pose = poses[i, :, :]
         c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
@@ -158,7 +156,7 @@ def main(_):
             'imw': img.shape[1], 'scene': '', 'spp': 0,
             'original_path': img_paths[i]}
         xm.io.json.write(
-            frame_meta, join(FLAGS.out_root, view_folder_, 'metadata.json'))
+            frame_meta, join(FLAGS.outroot, view_folder_, 'metadata.json'))
 
     # Write training and validation JSONs
     xm.io.json.write(train_meta, train_json)
@@ -183,7 +181,7 @@ def main(_):
             'envmap': '', 'envmap_inten': 0, 'imh': img.shape[0],
             'imw': img.shape[1], 'scene': '', 'spp': 0, 'original_path': ''}
         xm.io.json.write(
-            frame_meta, join(FLAGS.out_root, view_folder_, 'metadata.json'))
+            frame_meta, join(FLAGS.outroot, view_folder_, 'metadata.json'))
 
     # Write JSON
     xm.io.json.write(test_meta, test_json)

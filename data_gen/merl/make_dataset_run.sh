@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,18 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 merl_dir out_dir[ ...]"
+    exit 1
+fi
+merl_dir="$1"
+out_dir="$2"
+shift # shift the remaining arguments
+shift
 
-ims='512'
-envmap_h='16'
-spp='1'
-
-blaze run -c opt --copt=-mavx \
-    'experimental/users/xiuming/sim/data_gen/merl:make_dataset' \
-    -- \
-    --merl_dir='/cns/is-d/home/gcam-eng/gcam/interns/xiuming/sim/data/brdf/merl/' \
-    --envmap_h="$envmap_h" \
-    --ims="$ims" \
-    --spp="$spp" \
-    --out_dir="/cns/is-d/home/gcam-eng/gcam/interns/xiuming/sim/data/brdf/merl_npz/ims${ims}_envmaph${envmap_h}_spp${spp}" \
+PYTHONPATH="$REPO_DIR" \
+    python make_dataset.py \
+    --merl_dir="$merl_dir" \
+    --envmap_h='16' \
+    --ims='512' \
+    --spp='1' \
+    --out_dir="$out_dir" \
     "$@"
-exit

@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,25 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+import tensorflow as tf
 
-if [ $# -lt 4 ]; then
-    echo "Usage: $0 scene_dir h n_vali outroot[ ...]"
-    exit 1
-fi
-scene_dir="$1"
-h="$2"
-n_vali="$3"
-outroot="$4"
-shift # shift the remaining arguments
-shift
-shift
-shift
+from util import logging as logutil
+from .base import Network as BaseNetwork
 
-PYTHONPATH="$REPO_DIR" \
-    python "$REPO_DIR"/data_gen/real/make_dataset.py \
-    --scene_dir="$scene_dir" \
-    --h="$h" \
-    --n_vali="$n_vali" \
-    --outroot="$outroot" \
-    "$@"
+
+logger = logutil.Logger(loggee="networks/seq")
+
+
+class Network(BaseNetwork):
+    """Assuming simple sequential flow.
+    """
+    def build(self, input_shape):
+        seq = tf.keras.Sequential(self.layers)
+        seq.build(input_shape)
+        for layer in self.layers:
+            assert layer.built, "Some layers not built"
+
+    def __call__(self, tensor):
+        x = tensor
+        for layer in self.layers:
+            y = layer(x)
+            x = y
+        return y

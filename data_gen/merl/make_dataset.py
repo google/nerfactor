@@ -17,20 +17,21 @@ import numpy as np
 from tqdm import tqdm
 from absl import app, flags
 
-from google3.experimental.users.xiuming.xiuminglib import xiuminglib as xm
-from google3.experimental.users.xiuming.sim.data_gen.util import save_npz
-from google3.experimental.users.xiuming.sim.brdf.renderer import SphereRenderer
-from google3.experimental.users.xiuming.sim.brdf.merl.merl import MERL
+from third_party.xiuminglib import xiuminglib as xm
+from data_gen.util import save_npz
+from brdf.renderer import SphereRenderer
+from brdf.merl.merl import MERL
 
 
-flags.DEFINE_string('merl_dir', '', "")
-flags.DEFINE_float('vali_frac', 0.01, "")
-flags.DEFINE_string('envmap_path', 'point', "")
-flags.DEFINE_integer('envmap_h', 16, "")
-flags.DEFINE_float('envmap_inten', 1., "")
-flags.DEFINE_integer('ims', 256, "")
-flags.DEFINE_integer('spp', 64, "")
-flags.DEFINE_string('out_dir', '', "")
+flags.DEFINE_string('merl_dir', '', "directory to downloaded MERL binary files")
+flags.DEFINE_float('vali_frac', 0.01, "fraction of data used for validation")
+flags.DEFINE_string(
+    'envmap_path', 'point', "light probe path or a special string like 'point'")
+flags.DEFINE_integer('envmap_h', 16, "light probe height")
+flags.DEFINE_float('envmap_inten', 1., "light probe intensity")
+flags.DEFINE_integer('ims', 256, "render size during visualization")
+flags.DEFINE_integer('spp', 64, "samples per pixel for BRDF rendering")
+flags.DEFINE_string('out_dir', '', "output directory")
 FLAGS = flags.FLAGS
 
 

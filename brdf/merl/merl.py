@@ -16,9 +16,9 @@ from os.path import basename
 import numpy as np
 from scipy.spatial import cKDTree
 
-from google3.experimental.users.xiuming.xiuminglib import xiuminglib as xm
-from google3.experimental.users.xiuming.sim.third_party.nielsen2015on \
-    import merlFunctions as merl, coordinateFunctions as coord
+from third_party.xiuminglib import xiuminglib as xm
+from third_party.nielsen2015on import merlFunctions as merl, \
+    coordinateFunctions as coord
 
 
 class MERL:

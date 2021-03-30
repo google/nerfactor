@@ -16,23 +16,18 @@
 
 set -e
 
-if [ $# -lt 4 ]; then
-    echo "Usage: $0 scene_dir h n_vali outroot[ ...]"
+# The first, required argument specifies which GPU(s) you want to use,
+# e.g., '1' or '1,2'
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 gpu[ ...]"
     exit 1
 fi
-scene_dir="$1"
-h="$2"
-n_vali="$3"
-outroot="$4"
+gpu="$1"
 shift # shift the remaining arguments
-shift
-shift
-shift
 
-PYTHONPATH="$REPO_DIR" \
-    python "$REPO_DIR"/data_gen/real/make_dataset.py \
-    --scene_dir="$scene_dir" \
-    --h="$h" \
-    --n_vali="$n_vali" \
-    --outroot="$outroot" \
+#TF_FORCE_GPU_ALLOW_GROWTH=true \
+TF_GPU_THREAD_MODE='gpu_private' \
+    CUDA_VISIBLE_DEVICES="$gpu" \
+    PYTHONPATH="$REPO_DIR" \
+    python "$REPO_DIR"/nerfactor/trainvali.py \
     "$@"

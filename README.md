@@ -12,6 +12,27 @@ This is the authors' code release for:
 This is not an officially supported Google product.
 
 
+## Setup
+
+1. Clone this repository:
+    ```
+    git clone https://github.com/google/nerfactor.git
+    ```
+
+1. Install a Conda environment with all dependencies:
+    ```
+    cd nerfactor
+    conda env create -f environment.yml
+    conda activate nerfactor
+    ```
+
+### Tips
+
+* The IPython dependency in `environment.yml` is for `IPython.embed()` alone.
+  If you are not using that to insert breakpoints during debugging, you can
+  take it out (it should not hurt to just leave it there).
+
+
 ## Issues or Questions?
 
 If the issue is code-related, please open an issue here.

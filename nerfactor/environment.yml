@@ -1,0 +1,15 @@
+name: nerfactor
+channels:
+    - conda-forge
+    - anaconda
+dependencies:
+    - python=3.6
+    - pip
+    - numpy
+    - ipython
+    - pillow
+    - opencv
+    - tqdm
+    - pip:
+        - tensorflow==2.2.0
+    - matplotlib
