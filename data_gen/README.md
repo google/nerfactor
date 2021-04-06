@@ -18,7 +18,7 @@ TODO
    [here](https://drive.google.com/file/d/1jzggQ7IPaJJTKx9yLASWHrX8dXHnG5eB/view?usp=sharing).
 
 1. Convert these real images and COLMAP poses into our format:
-    ```
+    ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     scene_dir='/data/vision/billf/intrinsic/sim/data/nerf_real_360/pinecone'
     h='512'
@@ -33,12 +33,12 @@ TODO
 ## Converting the MERL Binary BRDFs Into a TensorFlow Dataset
 
 1. Go to the correct folder for this task:
-    ```
+    ```bash
     cd merl
     ```
 
 1. Start the conversion:
-    ```
+    ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     merl_dir='/data/vision/billf/intrinsic/sim/data/brdf_merl'
     out_dir='/data/vision/billf/intrinsic/sim/data/brdf_merl_npz/ims512_envmaph16_spp1'
