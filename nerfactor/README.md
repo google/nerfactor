@@ -6,16 +6,17 @@ testing.
 `trainvali.py` and `test.py` are the main scripts with the
 training/validation/testing loops. `config/` contains the example configuration
 files, from which the pipeline parses arguments. The full NeRFactor model is
-specified in `models/nerfactor.py`, and the data loader is specified in
+specified in `models/nerfactor.py`, and the main data loader is specified in
 `datasets/nerf_shape.py`.
 
-Each model in this pipeline has its own training/validation visualization,
-but for all of them, you can visualize the losses with:
+Different model in this pipeline may produce visualization in their own ways,
+but for all of them, you can visualize the training and validation losses with:
 ```
 tensorboard --logdir="$outroot" --bind_all
 ```
 and find handy links to the visualization webpages under the "TEXT" tab
-in TensorBoard.
+in TensorBoard. For testing, the link to the compiled video will be printed at
+the end of the run.
 
 
 ## Training and Validation
@@ -27,7 +28,7 @@ reflectance, and illumination.
 
 1. (Only once for all scenes) Learn data-driven BRDF priors (using a single
    GPU suffices):
-    ```
+    ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root='/data/vision/billf/intrinsic/sim/data/brdf_merl_npz/ims512_envmaph16_spp1'
     outroot='/data/vision/billf/intrinsic/sim/output/train/merl'
