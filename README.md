@@ -15,12 +15,12 @@ This is not an officially supported Google product.
 ## Setup
 
 1. Clone this repository:
-    ```
+    ```bash
     git clone https://github.com/google/nerfactor.git
     ```
 
 1. Install a Conda environment with all dependencies:
-    ```
+    ```bash
     cd nerfactor
     conda env create -f environment.yml
     conda activate nerfactor

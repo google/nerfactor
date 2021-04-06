@@ -11,7 +11,7 @@ specified in `models/nerfactor.py`, and the main data loader is specified in
 
 Different model in this pipeline may produce visualization in their own ways,
 but for all of them, you can visualize the training and validation losses with:
-```
+```bash
 tensorboard --logdir="$outroot" --bind_all
 ```
 and find handy links to the visualization webpages under the "TEXT" tab
@@ -39,7 +39,7 @@ reflectance, and illumination.
     ```
 
 1. Train a vanilla NeRF, optionally using multiple GPUs:
-    ```
+    ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
     near='2' # use '0.1' if real 360 data
@@ -52,7 +52,7 @@ reflectance, and illumination.
     ```
 
 1. Compute geometry buffers for all views by querying the trained NeRF:
-    ```
+    ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
     trained_nerf='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163/lr5e-4'
@@ -69,7 +69,7 @@ reflectance, and illumination.
 
 1. Pre-train geometry MLPs that cache the NeRF geometry, which takes only around
    20 minutes on four GPUs:
-    ```
+    ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
     near='2' # use '0.1' if real 360 data
@@ -83,7 +83,7 @@ reflectance, and illumination.
     ```
 
 1. Jointly optimize shape, reflectance, and illumination:
-    ```
+    ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
     near='2' # use '0.1' if real 360 data
@@ -117,7 +117,7 @@ reflectance, and illumination.
 
 After the factorization, one can synthesize novel views under lighting
 conditions by testing the trained model:
-```
+```bash
 repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
 ckpt='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163_nerfactor/lr1e-3/checkpoints/ckpt-10'
 
