@@ -92,14 +92,6 @@ def imwrite_tensor(tensor_uint, out_prefix):
             img.save(h)
 
 
-def write_video(frames, outpath, fps=12):
-    assert frames, "No frames"
-    outdir = dirname(outpath)
-    if not exists(outdir):
-        makedirs(outdir)
-    raise NotImplementedError # FIXME
-
-
 def read_json(path):
     with open(path, 'r') as h:
         data = json.load(h)

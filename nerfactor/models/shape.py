@@ -331,6 +331,7 @@ class Model(BaseModel):
             pass
 
     def compile_batch_vis(self, batch_vis_dirs, outpref, mode='train'):
+        viewer_prefix = self.config.get('DEFAULT', 'viewer_prefix')
         self._validate_mode(mode)
         # Shortcircuit if training (same reason as above)
         if mode == 'train':
@@ -341,7 +342,7 @@ class Model(BaseModel):
             self._compile_into_webpage(batch_vis_dirs, outpath)
         else:
             raise NotImplementedError(mode)
-        view_at = 'https://viewer' + outpath
+        view_at = viewer_prefix + outpath
         return view_at # to be logged into TensorBoard
 
     def _compile_into_webpage(self, batch_dirs, out_html):

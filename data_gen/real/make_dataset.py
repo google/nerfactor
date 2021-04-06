@@ -100,7 +100,7 @@ def main(_):
     poses, test_poses = _generate_spherical_poses(poses, bds)
 
     # Training-validation split
-    ind_vali = np.arange(n_imgs)[::(n_imgs // FLAGS.n_vali)]
+    ind_vali = np.arange(n_imgs)[:-1:(n_imgs // FLAGS.n_vali)]
     ind_train = np.array(
         [x for x in np.arange(n_imgs) if x not in ind_vali])
 

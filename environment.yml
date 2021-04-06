@@ -6,10 +6,13 @@ dependencies:
     - python=3.6
     - pip
     - numpy
+    - scipy
+    - matplotlib
     - ipython
+    - tqdm
     - pillow
     - opencv
-    - tqdm
     - pip:
         - tensorflow==2.2.0
-    - matplotlib
+    - cudatoolkit
+    - cudnn

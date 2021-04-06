@@ -49,11 +49,11 @@ class Dataset(BaseDataset):
             lvis_path = join(nerf_root, id_, 'lvis.npy')
             normal_path = join(nerf_root, id_, 'normal.npy')
             xyz_path = join(nerf_root, id_, 'xyz.npy')
-            paths = {'xyz': xyz_path, 'normal': normal_path, 'lvis': lvis_path}
-            if self.mode == 'test': # NeRF alpha
-                alpha_path = join(nerf_root, id_, 'alpha.png')
-                paths['alpha'] = alpha_path
-            else: # GT alpha
+            alpha_path = join(nerf_root, id_, 'alpha.png')
+            paths = {
+                'xyz': xyz_path, 'normal': normal_path, 'lvis': lvis_path,
+                'alpha': alpha_path}
+            if self.mode != 'test':
                 rgba_path = join(dirname(metadata_path), 'rgba.png')
                 paths['rgba'] = rgba_path
             if ioutil.all_exist(paths):
@@ -132,6 +132,7 @@ class Dataset(BaseDataset):
     # pylint: disable=arguments-differ
     def _load_data(self, metadata_path):
         imh = self.config.getint('DEFAULT', 'imh')
+        use_nerf_alpha = self.config.getboolean('DEFAULT', 'use_nerf_alpha')
         metadata_path = tutil.eager_tensor_to_str(metadata_path)
         id_ = self._parse_id(metadata_path)
         # Rays
@@ -164,8 +165,12 @@ class Dataset(BaseDataset):
             assert rgba.ndim == 3 and rgba.shape[2] == 4, \
                 "Input image is not RGBA"
             rgba = xm.img.normalize_uint(rgba)
-            alpha = rgba[:, :, 3] # ground-truth alpha
             rgb = rgba[:, :, :3]
+            if use_nerf_alpha: # useful for real scenes
+                alpha = xm.io.img.load(paths['alpha'])
+                alpha = xm.img.normalize_uint(alpha)
+            else:
+                alpha = rgba[:, :, 3] # ground-truth alpha
         # Resize
         if imh != xyz.shape[0]:
             xyz = xm.img.resize(xyz, new_h=imh)

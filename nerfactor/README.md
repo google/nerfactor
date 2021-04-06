@@ -1,4 +1,4 @@
-# NeRFactor: Main Model
+# NeRFactor: Model
 
 This folder is a TensorFlow 2 (eager) pipeline for training, validation, and
 testing.
@@ -19,6 +19,11 @@ in TensorBoard.
 
 
 ## Training
+
+Given multi-view, posed images of the scene and the MERL BRDF dataset, we (1)
+first learn data-drive BRDF priors, (*2) distill NeRF's (noisy) geometry so
+that we can refine it, and finally (3) jointly optimize for the shape,
+reflectance, and illumination.
 
 1. (Only once for all scenes) Learn data-driven BRDF priors (using a single
    GPU suffices):
@@ -82,6 +87,7 @@ in TensorBoard.
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
     near='2' # use '0.1' if real 360 data
     far='6' # use '2' if real 360 data
+    use_nerf_alpha='false' # use 'true' if real 360 data
     surf_root='/data/vision/billf/intrinsic/sim/output/surf/hotdog_2163'
     shape_ckpt='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163_shape/lr1e-2/checkpoints/ckpt-2'
     brdf_ckpt='/data/vision/billf/intrinsic/sim/output/train/merl/lr1e-2/checkpoints/ckpt-50'
@@ -90,7 +96,7 @@ in TensorBoard.
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 
     REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerfactor.ini' \
-        --config_override="data_root=$data_root,near=$near,far=$far,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
+        --config_override="data_root=$data_root,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
 
 ### Tips
@@ -102,18 +108,20 @@ in TensorBoard.
   the pipeline, insert breakpoints there, and debug.
 * For easier and faster debugging, consider turning on `debug`. For instance,
   with this flag on, `trainvali.py` will NOT decorate the main training step
-  with `@tf.function` (easier) and only load a single datapoint (faster).
+  with `@tf.function` (easier) and only load a single datapoint each epoch
+  (faster).
 
 
-## Testing
+## Testing: View Synthesis, Relighting, and Both Simultaneously
 
-Run the testing pipeline:
+After the factorization, one can synthesize novel views under lighting
+conditions by testing the trained model:
 ```
-CUDA_VISIBLE_DEVICES="$GPU" \
-    python "$ROOT"/nerfactor/nerfactor/test.py \
-    --ckpt="$ROOT"'/output/train/lr:1e-3_mgm:-1/checkpoints/ckpt-43'
+repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
+ckpt='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163_nerfactor/lr1e-3/checkpoints/ckpt-10'
+
+REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/test_run.sh '0' --ckpt="$ckpt" --color_correct_albedo
 ```
-which runs inference with the given checkpoint on all test data, and eventually
-produces a video visualization whose frames correspond to different camera-light
-configurations.
+This eventually produces a video visualization of the scene as viewed from novel
+views and relit under novel lighting conditions.
 

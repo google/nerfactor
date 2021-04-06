@@ -43,6 +43,11 @@ class Dataset(BaseDataset):
         # To allow getting all rays for training images
         self.always_all_rays = always_all_rays
 
+    def get_n_views(self):
+        if hasattr(self, 'files'):
+            return len(self.files)
+        raise RuntimeError("Call `_glob()` before `get_n_views()`")
+
     def _get_batch_size(self):
         if self.mode == 'train':
             bs = self.config.getint('DEFAULT', 'n_rays_per_step')

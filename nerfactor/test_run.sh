@@ -16,6 +16,16 @@
 
 set -e
 
-PYTHONPATH="$REPO_DIR" \
-    python "$REPO_DIR"/data_gen/real/make_dataset.py \
+# The first, required argument specifies which GPU(s) you want to use,
+# e.g., '1' or '1,2'
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 gpu[ ...]"
+    exit 1
+fi
+gpu="$1"
+shift # shift the remaining arguments
+
+CUDA_VISIBLE_DEVICES="$gpu" \
+    PYTHONPATH="$REPO_DIR" \
+    python "$REPO_DIR"/nerfactor/test.py \
     "$@"

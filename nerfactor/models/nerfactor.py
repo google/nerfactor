@@ -71,8 +71,8 @@ class Model(ShapeModel):
         olat_inten = self.config.getfloat('DEFAULT', 'olat_inten', fallback=200)
         ambi_inten = self.config.getfloat(
             'DEFAULT', 'ambient_inten', fallback=0)
-        lights_novel = OrderedDict()
         # (1) OLAT
+        novel_olat = OrderedDict()
         light_shape = self.light_res + (3,)
         if self.white_bg:
             # Add some ambient lighting to better match perception
@@ -83,21 +83,27 @@ class Model(ShapeModel):
             for j in range(2 if self.debug else self.light_res[1]):
                 one_hot = tutil.one_hot_img(*ambient.shape, i, j)
                 envmap = olat_inten * one_hot + ambient
-                lights_novel['olat-%04d-%04d' % (i, j)] = envmap
-        # (2) Environment maps
+                novel_olat['%04d-%04d' % (i, j)] = envmap
+        self.novel_olat = novel_olat
+        # (2) Light probes
+        novel_probes = OrderedDict()
         test_envmap_dir = self.config.get('DEFAULT', 'test_envmap_dir')
-        for exr_path in xm.os.sortglob(test_envmap_dir, '*.exr'):
-            name = basename(exr_path)[:-len('.exr')]
-            envmap = self._load_light(exr_path)
-            lights_novel[name] = envmap
-        self.lights_novel = lights_novel
+        for path in xm.os.sortglob(test_envmap_dir, '*.hdr'):
+            name = basename(path)[:-len('.hdr')]
+            envmap = self._load_light(path)
+            novel_probes[name] = envmap
+        self.novel_probes = novel_probes
         # Tonemap and visualize these novel lighting conditions
         self.embed_light_h = self.config.getint(
             'DEFAULT', 'embed_light_h', fallback=32)
-        self.lights_novel_uint = {}
-        for k, v in self.lights_novel.items():
+        self.novel_olat_uint = {}
+        for k, v in self.novel_olat.items():
             vis_light = lightutil.vis_light(v, h=self.embed_light_h)
-            self.lights_novel_uint[k] = vis_light
+            self.novel_olat_uint[k] = vis_light
+        self.novel_probes_uint = {}
+        for k, v in self.novel_probes.items():
+            vis_light = lightutil.vis_light(v, h=self.embed_light_h)
+            self.novel_probes_uint[k] = vis_light
         # PSNR calculator
         self.psnr = xm.metric.PSNR('uint8')
 
@@ -177,8 +183,8 @@ class Model(ShapeModel):
         return resized
 
     def call(
-            self, batch, mode='train', albedo_scales=None, albedo_override=None,
-            brdf_z_override=None):
+            self, batch, mode='train', relight_olat=False, relight_probes=False,
+            albedo_scales=None, albedo_override=None, brdf_z_override=None):
         xyz_jitter_std = self.config.getfloat('DEFAULT', 'xyz_jitter_std')
         self._validate_mode(mode)
         id_, hw, rayo, _, rgb, alpha, xyz, normal, lvis = batch
@@ -241,13 +247,14 @@ class Model(ShapeModel):
         brdf = self._eval_brdf_at(
             surf2l, surf2c, normal_pred, albedo, brdf_prop) # NxLx3
         # ------ Rendering equation
-        relight = mode == 'test'
-        rgb_pred = self._render( # Nx3 or Nx(1+L+M)x3
-            lvis_pred, brdf, surf2l, normal_pred, relight=relight)
+        rgb_pred, rgb_olat, rgb_probes = self._render( # all Nx3
+            lvis_pred, brdf, surf2l, normal_pred, relight_olat=relight_olat,
+            relight_probes=relight_probes)
         # ------ Loss
         pred = {
             'rgb': rgb_pred, 'normal': normal_pred, 'lvis': lvis_pred,
-            'albedo': albedo, 'brdf': brdf_prop}
+            'albedo': albedo, 'brdf': brdf_prop,
+            'rgb_olat': rgb_olat, 'rgb_probes': rgb_probes}
         gt = {'rgb': rgb, 'normal': normal, 'lvis': lvis, 'alpha': alpha}
         loss_kwargs = {
             'mode': mode, 'normal_jitter': normal_jitter,
@@ -262,7 +269,8 @@ class Model(ShapeModel):
         return pred, gt, loss_kwargs, to_vis
 
     def _render(
-            self, light_vis, brdf, l, n, relight=False,
+            self, light_vis, brdf, l, n,
+            relight_olat=False, relight_probes=False,
             white_light_override=False, white_lvis_override=False):
         linear2srgb = self.config.getboolean('DEFAULT', 'linear2srgb')
         light = self.light
@@ -291,17 +299,26 @@ class Model(ShapeModel):
 
         # ------ Render under original lighting
         rgb = integrate(light)
-        if not relight:
-            return rgb # Nx3
-        # ------ Continue to render extra relit results
-        rgb = [rgb] # listify
-        for _, light in tqdm(
-                self.lights_novel.items(), desc="Rendering relit results"):
-            rgb_relit = integrate(light)
-            rgb.append(rgb_relit)
-        rgb = tf.concat([x[:, None, :] for x in rgb], axis=1)
-        rgb = tf.debugging.check_numerics(rgb, "Renders")
-        return rgb # Nx(1+L+M)x3
+        # ------ Continue to render OLAT-relit results
+        rgb_olat = None
+        if relight_olat:
+            rgb_olat = []
+            for _, light in self.novel_olat.items():
+                rgb_relit = integrate(light)
+                rgb_olat.append(rgb_relit)
+            rgb_olat = tf.concat([x[:, None, :] for x in rgb_olat], axis=1)
+            rgb_olat = tf.debugging.check_numerics(rgb_olat, "OLAT Renders")
+        # ------ Continue to render light probe-relit results
+        rgb_probes = None
+        if relight_probes:
+            rgb_probes = []
+            for _, light in self.novel_probes.items():
+                rgb_relit = integrate(light)
+                rgb_probes.append(rgb_relit)
+            rgb_probes = tf.concat([x[:, None, :] for x in rgb_probes], axis=1)
+            rgb_probes = tf.debugging.check_numerics(
+                rgb_probes, "Light Probe Renders")
+        return rgb, rgb_olat, rgb_probes # Nx3
 
     @property
     def light(self):
@@ -464,7 +481,7 @@ class Model(ShapeModel):
                 dy = light - tf.roll(light, 1, 0)
                 tv = tf.reduce_sum(dx ** 2 + dy ** 2)
                 loss += light_tv_weight * tv
-            # Across-channel TV penalty
+            # Cross-channel TV penalty
             if light_achro_weight > 0:
                 dc = light - tf.roll(light, 1, 2)
                 tv = tf.reduce_sum(dc ** 2)
@@ -492,8 +509,8 @@ class Model(ShapeModel):
         return z_rgb
 
     def vis_batch(
-            self, data_dict, outdir, mode='train', light_vis_h=256,
-            dump_raw_to=None):
+            self, data_dict, outdir, mode='train', dump_raw_to=None,
+            light_vis_h=256, olat_vis=False):
         # Visualize estimated lighting
         if mode == 'vali':
             # The same for all batches/views, so do it just once
@@ -513,13 +530,12 @@ class Model(ShapeModel):
         id_ = tutil.eager_tensor_to_str(id_)
         # To NumPy and reshape back to images
         for k, v in data_dict.items():
+            if v is None:
+                continue # no-op
             v_ = v.numpy()
-            if k.endswith('rgb'):
-                if v_.ndim == 2: # Nx3
-                    v_ = v_.reshape(hw + (3,))
-                else: # Nx(1+L+M)x3, containing relit renderings
-                    v_ = v_.reshape(hw + (v_.shape[1], 3))
-            elif k.endswith(('albedo', 'normal')):
+            if k in ('pred_rgb_olat', 'pred_rgb_probes'):
+                v_ = v_.reshape(hw + (v_.shape[1], 3))
+            elif k.endswith(('rgb', 'albedo', 'normal')):
                 v_ = v_.reshape(hw + (3,))
             elif k.endswith(('occu', 'depth', 'disp', 'alpha')):
                 v_ = v_.reshape(hw)
@@ -530,56 +546,66 @@ class Model(ShapeModel):
             else:
                 raise NotImplementedError(k)
             data_dict[k] = v_
+
+        def composite_on_avg_light(render, light_uint):
+            # Compute average lighting
+            lareas = self.lareas.numpy()
+            lareas_upper = lareas[:(lareas.shape[0] // 2), :]
+            weights = np.dstack([lareas_upper] * 3)
+            light = xm.img.normalize_uint(light_uint) # now float
+            light = xm.img.resize(light, new_h=lareas.shape[0])
+            light_upper = light[:(light.shape[0] // 2), :, :]
+            avg_light = np.average( # (3,)
+                light_upper, axis=(0, 1), weights=weights)
+            # Composite results on average lighting background
+            bg = np.tile(
+                avg_light[None, None, :], v_relit.shape[:2] + (1,))
+            img = xm.img.alpha_blend(render, alpha, bg)
+            return img
+
         # Write images
         img_dict = {}
         alpha = data_dict['gt_alpha']
         for k, v in data_dict.items():
+            # OLAT-relit RGB
+            if k == 'pred_rgb_olat': # HxWxLx3
+                if v is None:
+                    continue
+                olat_names = list(self.novel_olat.keys())
+                olat_first_n = np.prod(self.light_res) // 2 # top half only
+                olat_n = 0
+                for i, lname in enumerate(
+                        tqdm(olat_names, desc="Writing OLAT-Relit Results")):
+                    # Skip visiualization if enough OLATs
+                    if olat_n >= olat_first_n:
+                        continue
+                    else:
+                        olat_n += 1
+                    #
+                    k_relit = k + '_' + lname
+                    v_relit = v[:, :, i, :]
+                    light_uint = self.novel_olat_uint[lname]
+                    img = composite_on_avg_light(v_relit, light_uint)
+                    img_dict[k_relit] = xm.io.img.write_arr(
+                        img, join(outdir, k_relit + '.png'), clip=True)
+            # Light probe-relit RGB
+            elif k == 'pred_rgb_probes': # HxWxLx3
+                if v is None:
+                    continue
+                probe_names = list(self.novel_probes.keys())
+                for i, lname in enumerate(probe_names):
+                    k_relit = k + '_' + lname
+                    v_relit = v[:, :, i, :]
+                    light_uint = self.novel_probes_uint[lname]
+                    img = composite_on_avg_light(v_relit, light_uint)
+                    img_dict[k_relit] = xm.io.img.write_arr(
+                        img, join(outdir, k_relit + '.png'), clip=True)
             # RGB
-            if k.endswith('rgb'):
-                if v.ndim == 3: # HxWx3
-                    bg = np.ones_like(v) if self.white_bg else np.zeros_like(v)
-                    img = imgutil.alpha_blend(v, alpha, bg)
-                    img_dict[k] = xm.io.img.write_arr(
-                        img, join(outdir, k + '.png'), clip=True)
-                else: # HxWx(1+L+M)x3
-                    v_orig = v[:, :, 0, :] # lit by original lighting
-                    bg = np.ones_like(v_orig) if self.white_bg \
-                        else np.zeros_like(v_orig)
-                    img = imgutil.alpha_blend(v_orig, alpha, bg)
-                    img_dict[k] = xm.io.img.write_arr(
-                        img, join(outdir, k + '.png'), clip=True)
-                    # Write relit results
-                    novel_light_names = list(self.lights_novel.keys())
-                    olat_first_n = np.prod(self.light_res) // 2 # top half only
-                    olat_n = 0
-                    for i in tqdm(
-                            range(1, v.shape[2]), desc="Writing relit results"):
-                        lname = novel_light_names[i - 1]
-                        # Skip visiualization if enough OLATs
-                        if lname.startswith('olat-'):
-                            if olat_n >= olat_first_n:
-                                continue
-                            else:
-                                olat_n += 1
-                        #
-                        k_relit = k + '_' + lname
-                        v_relit = v[:, :, i, :]
-                        # Compute average lighting
-                        lareas = self.lareas.numpy()
-                        lareas_upper = lareas[:(lareas.shape[0] // 2), :]
-                        weights = np.dstack([lareas_upper] * 3)
-                        light = self.lights_novel_uint[lname]
-                        light = xm.img.normalize_uint(light) # now float
-                        light = xm.img.resize(light, new_h=lareas.shape[0])
-                        light_upper = light[:(light.shape[0] // 2), :, :]
-                        avg_light = np.average( # (3,)
-                            light_upper, axis=(0, 1), weights=weights)
-                        # Composite results on average lighting background
-                        bg = np.tile(
-                            avg_light[None, None, :], v_relit.shape[:2] + (1,))
-                        img = xm.img.alpha_blend(v_relit, alpha, bg)
-                        img_dict[k_relit] = xm.io.img.write_arr(
-                            img, join(outdir, k_relit + '.png'), clip=True)
+            elif k.endswith('rgb'): # HxWx3
+                bg = np.ones_like(v) if self.white_bg else np.zeros_like(v)
+                img = imgutil.alpha_blend(v, alpha, bg)
+                img_dict[k] = xm.io.img.write_arr(
+                    img, join(outdir, k + '.png'), clip=True)
             # Normals
             elif k.endswith('normal'):
                 v_ = (v + 1) / 2 # [-1, 1] to [0, 1]
@@ -602,15 +628,14 @@ class Model(ShapeModel):
                 img = imgutil.alpha_blend(mean, alpha, bg)
                 img_dict[k] = xm.io.img.write_arr(
                     img, join(outdir, k + '.png'), clip=True)
-                # If relit results are rendered (e.g., during testing), let's
-                # also visualize per-light vis.
-                if data_dict['pred_rgb'].ndim == 4:
+                # Optionally, visualize per-light vis.
+                if olat_vis:
                     for i in tqdm(
                             range(4 if self.debug else v.shape[2] // 2), # half
-                            desc="Writing per-light visibility (%s)" % k):
+                            desc="Writing Per-Light Visibility (%s)" % k):
                         v_olat = v[:, :, i]
                         ij = np.unravel_index(i, self.light_res)
-                        k_olat = k + '_olat-%04d-%04d' % ij
+                        k_olat = k + '_olat_%04d-%04d' % ij
                         img = imgutil.alpha_blend(v_olat, alpha, bg)
                         img_dict[k_olat] = xm.io.img.write_arr(
                             img, join(outdir, k_olat + '.png'), clip=True)
@@ -666,6 +691,7 @@ class Model(ShapeModel):
         ioutil.write_json(metadata, join(outdir, 'metadata.json'))
 
     def compile_batch_vis(self, batch_vis_dirs, outpref, mode='train', fps=12):
+        viewer_prefix = self.config.get('DEFAULT', 'viewer_prefix')
         self._validate_mode(mode)
         # Shortcircuit if training (same reason as above)
         if mode == 'train':
@@ -675,9 +701,9 @@ class Model(ShapeModel):
             outpath = outpref + '.html'
             self._compile_into_webpage(batch_vis_dirs, outpath)
         else:
-            outpath = outpref + '.webm'
+            outpath = outpref + '.mp4'
             self._compile_into_video(batch_vis_dirs, outpath, fps=fps)
-        view_at = 'https://viewer' + outpath
+        view_at = viewer_prefix + outpath
         return view_at # to be logged into TensorBoard
 
     def _compile_into_webpage(self, batch_dirs, out_html):
@@ -735,7 +761,7 @@ class Model(ShapeModel):
         html_save = xm.decor.colossus_interface(html.save)
         html_save(out_html)
 
-    def _compile_into_video(self, batch_dirs, out_webm, fps=12):
+    def _compile_into_video(self, batch_dirs, out_mp4, fps=12):
         batch_dirs = sorted(
             batch_dirs) # assuming batch directory order is the right view order
         if self.debug:
@@ -780,7 +806,7 @@ class Model(ShapeModel):
 
         # ------ View synthesis
         frames = []
-        for batch_dir in tqdm(batch_dirs, desc="View synthesis"):
+        for batch_dir in tqdm(batch_dirs, desc="View Synthesis"):
             paths = {
                 'albedo': join(batch_dir, 'pred_albedo.png'),
                 'lvis': join(batch_dir, 'pred_lvis.png'), # mean
@@ -797,11 +823,11 @@ class Model(ShapeModel):
         # ------ Relighting
         relight_view_dir = batch_dirs[-1] # fixed to the final view
         lvis_paths = xm.os.sortglob(relight_view_dir, 'pred_lvis_olat*.png')
-        for lvis_path in tqdm(lvis_paths, desc="Final view, OLAT"):
-            olat_id = basename(lvis_path)[len('pred_lvis_'):-len('.png')]
-            if self.debug and (olat_id not in self.lights_novel_uint):
+        for lvis_path in tqdm(lvis_paths, desc="Final View, OLAT"):
+            olat_id = basename(lvis_path)[len('pred_lvis_olat_'):-len('.png')]
+            if self.debug and (olat_id not in self.novel_probes_uint):
                 continue
-            rgb_path = join(relight_view_dir, 'pred_rgb_%s.png' % olat_id)
+            rgb_path = join(relight_view_dir, 'pred_rgb_olat_%s.png' % olat_id)
             paths = {
                 'albedo': join(relight_view_dir, 'pred_albedo.png'),
                 'lvis': lvis_path, # per-light
@@ -812,20 +838,19 @@ class Model(ShapeModel):
             if not ioutil.all_exist(paths):
                 logger.warn("Skipping because of missing files: %s", olat_id)
                 continue
-            light_used = self.lights_novel_uint[olat_id]
+            light_used = self.novel_olat_uint[olat_id]
             frame = make_frame(paths, light=light_used, task='relight')
             frames.append(frame)
         # ------ Simultaneous
-        envmap_names = [
-            x for x in self.lights_novel.keys() if not x.startswith('olat')]
+        envmap_names = list(self.novel_probes.keys())
         n_envmaps = len(envmap_names)
         batch_dirs_roundtrip = list(reversed(batch_dirs)) + batch_dirs
         n_views_per_envmap = len(batch_dirs_roundtrip) / n_envmaps # float
         map_i = 0
         for view_i, batch_dir in enumerate(
-                tqdm(batch_dirs_roundtrip, desc="View roundtrip, IBL")):
+                tqdm(batch_dirs_roundtrip, desc="View Roundtrip, IBL")):
             envmap_name = envmap_names[map_i]
-            rgb_path = join(batch_dir, 'pred_rgb_%s.png' % envmap_name)
+            rgb_path = join(batch_dir, 'pred_rgb_probes_%s.png' % envmap_name)
             paths = {
                 'albedo': join(batch_dir, 'pred_albedo.png'),
                 'lvis': join(batch_dir, 'pred_lvis.png'), # mean
@@ -837,11 +862,11 @@ class Model(ShapeModel):
                 logger.warn(
                     "Skipping because of missing files:\n\t%s", batch_dir)
                 continue
-            light_used = self.lights_novel_uint[envmap_name]
+            light_used = self.novel_probes_uint[envmap_name]
             frame = make_frame(paths, light=light_used, task='simul')
             frames.append(frame)
             # Time to switch to the next map?
             if (view_i + 1) > n_views_per_envmap * (map_i + 1):
                 map_i += 1
         #
-        ioutil.write_video(frames, out_webm, fps=fps)
+        xm.vis.video.make_video(frames, outpath=out_mp4, fps=fps)
