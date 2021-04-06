@@ -188,6 +188,14 @@ class Model(ShapeModel):
         xyz_jitter_std = self.config.getfloat('DEFAULT', 'xyz_jitter_std')
         self._validate_mode(mode)
         id_, hw, rayo, _, rgb, alpha, xyz, normal, lvis = batch
+        # Mask out 100% background
+        mask = alpha[:, 0] > 0
+        rayo = tf.boolean_mask(rayo, mask)
+        rgb = tf.boolean_mask(rgb, mask)
+        xyz = tf.boolean_mask(xyz, mask)
+        normal = tf.boolean_mask(normal, mask)
+        lvis = tf.boolean_mask(lvis, mask)
+        # Directions
         surf2l = self._calc_ldir(xyz)
         surf2c = self._calc_vdir(rayo, xyz)
         # Jitter XYZs
@@ -250,6 +258,28 @@ class Model(ShapeModel):
         rgb_pred, rgb_olat, rgb_probes = self._render( # all Nx3
             lvis_pred, brdf, surf2l, normal_pred, relight_olat=relight_olat,
             relight_probes=relight_probes)
+        # Put values back into the full shape
+        ind = tf.where(mask)
+        n = tf.shape(alpha)[0] # total number of rays
+        l = tf.shape(lvis_pred)[1] # total number of light directions
+        rgb_pred = tf.scatter_nd(ind, rgb_pred, (n, 3))
+        normal_pred = tf.scatter_nd(ind, normal_pred, (n, 3))
+        lvis_pred = tf.scatter_nd(ind, lvis_pred, (n, l))
+        albedo = tf.scatter_nd(ind, albedo, (n, 3))
+        brdf_prop = tf.scatter_nd(ind, brdf_prop, (n, self.z_dim))
+        if rgb_olat is not None:
+            rgb_olat = tf.scatter_nd(
+                ind, rgb_olat, (n, len(self.novel_olat), 3))
+        if rgb_probes is not None:
+            rgb_probes = tf.scatter_nd(
+                ind, rgb_probes, (n, len(self.novel_probes), 3))
+        rgb = tf.scatter_nd(ind, rgb, (n, 3))
+        normal = tf.scatter_nd(ind, normal, (n, 3))
+        lvis = tf.scatter_nd(ind, lvis, (n, l))
+        normal_jitter = tf.scatter_nd(ind, normal_jitter, (n, 3))
+        lvis_jitter = tf.scatter_nd(ind, lvis_jitter, (n, l))
+        brdf_prop_jitter = tf.scatter_nd(ind, brdf_prop_jitter, (n, self.z_dim))
+        albedo_jitter = tf.scatter_nd(ind, albedo_jitter, (n, 3))
         # ------ Loss
         pred = {
             'rgb': rgb_pred, 'normal': normal_pred, 'lvis': lvis_pred,

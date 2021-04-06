@@ -18,7 +18,7 @@ and find handy links to the visualization webpages under the "TEXT" tab
 in TensorBoard.
 
 
-## Training
+## Training and Validation
 
 Given multi-view, posed images of the scene and the MERL BRDF dataset, we (1)
 first learn data-drive BRDF priors, (*2) distill NeRF's (noisy) geometry so
@@ -87,7 +87,7 @@ reflectance, and illumination.
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
     near='2' # use '0.1' if real 360 data
     far='6' # use '2' if real 360 data
-    use_nerf_alpha='false' # use 'true' if real 360 data
+    use_nerf_alpha='False' # use 'True' if real 360 data
     surf_root='/data/vision/billf/intrinsic/sim/output/surf/hotdog_2163'
     shape_ckpt='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163_shape/lr1e-2/checkpoints/ckpt-2'
     brdf_ckpt='/data/vision/billf/intrinsic/sim/output/train/merl/lr1e-2/checkpoints/ckpt-50'
@@ -120,6 +120,7 @@ conditions by testing the trained model:
 repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
 ckpt='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163_nerfactor/lr1e-3/checkpoints/ckpt-10'
 
+# Remove `--color_correct_albedo` for real scenes (no validation albedo)
 REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/test_run.sh '0' --ckpt="$ckpt" --color_correct_albedo
 ```
 This eventually produces a video visualization of the scene as viewed from novel
