@@ -42,13 +42,14 @@ reflectance, and illumination.
     ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
+    imh='512'
     near='2' # use '0.1' if real 360 data
     far='6' # use '2' if real 360 data
     outroot='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163'
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 
     REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerf.ini' \
-        --config_override="data_root=$data_root,near=$near,far=$far,outroot=$outroot,viewer_prefix=$viewer_prefix"
+        --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
 
 1. Compute geometry buffers for all views by querying the trained NeRF:
@@ -57,14 +58,15 @@ reflectance, and illumination.
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
     trained_nerf='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163/lr5e-4'
     out_root='/data/vision/billf/intrinsic/sim/output/surf/hotdog_2163'
-    imh='256'
-    scene_bbox='' # useful for bounding real scenes: '-0.2,0.2,-0.4,0.4,-0.5,0.3' for vasedeck; '' for pinecone
-    occu_thres='0.3' # useful for removing floaters in real scenes
+    imh='512'
+    scene_bbox='' # '' for synthetic scenes, '-0.2,0.2,-0.4,0.4,-0.5,0.3' for vasedeck, and '-0.3,0.3,-0.3,0.3,-0.3,0.3' for pinecone
+    occu_thres='0' # '0' for synthetic scenes, and '0.5' for real scenes
     mlp_chunk='375000' # bump this up until GPU gets OOM for faster computation
 
     REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/geometry_from_nerf_run.sh '0' \
-        --data_root="$data_root" --trained_nerf="$trained_nerf" --out_root="$out_root" \
-        --imh="$imh" --scene_bbox="$scene_bbox" --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
+        --data_root="$data_root" --trained_nerf="$trained_nerf" \
+        --out_root="$out_root" --imh="$imh" --scene_bbox="$scene_bbox" \
+        --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
     ```
 
 1. Pre-train geometry MLPs that cache the NeRF geometry, which takes only around
@@ -72,6 +74,7 @@ reflectance, and illumination.
     ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
+    imh='512'
     near='2' # use '0.1' if real 360 data
     far='6' # use '2' if real 360 data
     surf_root='/data/vision/billf/intrinsic/sim/output/surf/hotdog_2163'
@@ -79,13 +82,14 @@ reflectance, and illumination.
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 
     REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='shape.ini' \
-        --config_override="data_root=$data_root,near=$near,far=$far,data_nerf_root=$surf_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
+        --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,data_nerf_root=$surf_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
 
 1. Jointly optimize shape, reflectance, and illumination:
     ```bash
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
+    imh='512'
     near='2' # use '0.1' if real 360 data
     far='6' # use '2' if real 360 data
     use_nerf_alpha='False' # use 'True' if real 360 data
@@ -97,7 +101,7 @@ reflectance, and illumination.
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 
     REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerfactor.ini' \
-        --config_override="data_root=$data_root,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
+        --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
 
 ### Tips
