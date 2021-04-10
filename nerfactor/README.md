@@ -69,39 +69,29 @@ reflectance, and illumination.
         --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
     ```
 
-1. Pre-train geometry MLPs that cache the NeRF geometry, which takes only around
-   20 minutes on four GPUs:
+1. Pre-train geometry MLPs (distilling the NeRF geometry) and then jointly
+   optimize shape, reflectance, and illumination:
     ```bash
+    scene='hotdog_2163'
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-    data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
+    data_root="/data/vision/billf/intrinsic/sim/data/captures/$scene"
     imh='512'
-    near='2' # use '0.1' if real 360 data
-    far='6' # use '2' if real 360 data
-    surf_root='/data/vision/billf/intrinsic/sim/output/surf/hotdog_2163'
-    outroot='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163_shape'
+    if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
+        near='0.1'; far='2'; use_nerf_alpha=true
+    else
+        near='2'; far='6'; use_nerf_alpha=false
+    fi
+    surf_root="/data/vision/billf/intrinsic/sim/output/surf/$scene"
+    shape_outdir="/data/vision/billf/intrinsic/sim/output/train/${scene}_shape"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
-
-    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='shape.ini' \
-        --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,data_nerf_root=$surf_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
-    ```
-
-1. Jointly optimize shape, reflectance, and illumination:
-    ```bash
-    repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-    data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
-    imh='512'
-    near='2' # use '0.1' if real 360 data
-    far='6' # use '2' if real 360 data
-    use_nerf_alpha='False' # use 'True' if real 360 data
-    surf_root='/data/vision/billf/intrinsic/sim/output/surf/hotdog_2163'
-    shape_ckpt='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163_shape/lr1e-2/checkpoints/ckpt-2'
+    shape_ckpt="$shape_outdir/lr1e-2/checkpoints/ckpt-2"
     brdf_ckpt='/data/vision/billf/intrinsic/sim/output/train/merl/lr1e-2/checkpoints/ckpt-50'
     test_envmap_dir='/data/vision/billf/intrinsic/sim/data/envmaps/for-render_h16/test'
-    outroot='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163_nerfactor'
-    viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
+    outroot="/data/vision/billf/intrinsic/sim/output/train/${scene}_nerfactor"
 
-    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerfactor.ini' \
-        --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
+    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='shape.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix"
+
+    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
 
 ### Tips
