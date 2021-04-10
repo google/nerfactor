@@ -74,7 +74,7 @@ reflectance, and illumination.
     ```bash
     scene='hotdog_2163'
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-    data_root="/data/vision/billf/intrinsic/sim/data/captures/$scene"
+    data_root="/data/vision/billf/intrinsic/sim/data/selected/$scene"
     imh='512'
     if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
         near='0.1'; far='2'; use_nerf_alpha=true

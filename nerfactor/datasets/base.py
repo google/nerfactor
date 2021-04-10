@@ -41,7 +41,7 @@ class Dataset():
             n_map_parallel_calls = tf.data.experimental.AUTOTUNE
         self.n_map_parallel_calls = n_map_parallel_calls
         self.files = self._glob()
-        assert self.files, "No files to process into a dataset"
+        assert self.files, "No file to process into a dataset"
         self.bs = self._get_batch_size()
 
     def _glob(self):
