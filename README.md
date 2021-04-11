@@ -38,11 +38,9 @@ This is not an officially supported Google product.
 
 ## Data
 
-TODO: download instructions
+If you are using our data, TODO: download instructions
 
-### BYOD (Bring Your Own Data)?
-
-Go to [`data_gen/`](./data_gen) to either render your own synthetic data or
+If you are BYOD (bringing your own data), go to [`data_gen/`](./data_gen) to either render your own synthetic data or
 process your real captures.
 
 
