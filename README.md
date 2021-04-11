@@ -6,7 +6,7 @@
 
 This is the authors' code release for:
 > **Neural Factorization of Shape and Reflectance under an Unknown Illumination**  
-> Xiuming Zhang, Pratul P. Srinivasan, Boyang Deng, Paul Debevec, William T. Freeman, Jonathan T. Barron
+> Xiuming Zhang, Pratul P. Srinivasan, Boyang Deng, Paul Debevec, William T. Freeman, Jonathan T. Barron  
 > **arXiv**
 
 This is not an officially supported Google product.
@@ -28,9 +28,27 @@ This is not an officially supported Google product.
 
 ### Tips
 
+* You can find the TensorFlow version, cuDNN version, and CUDA version in
+  `environment.yml`.
+
 * The IPython dependency in `environment.yml` is for `IPython.embed()` alone.
   If you are not using that to insert breakpoints during debugging, you can
   take it out (it should not hurt to just leave it there).
+
+
+## Data
+
+TODO: download instructions
+
+### BYOD (Bring Your Own Data)?
+
+Go to [`data_gen/`](./data_gen) to either render your own synthetic data or
+process your real captures.
+
+
+## Running the Code
+
+Go to [`nerfactor/`](./nerfactor) and follow the instructions there.
 
 
 ## Issues or Questions?
