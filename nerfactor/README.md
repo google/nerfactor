@@ -32,36 +32,53 @@ the end of the run.
 1. (Only once for all scenes) Learn data-driven BRDF priors (using a single
    GPU suffices):
     ```bash
-    repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-    data_root='/data/vision/billf/intrinsic/sim/data/brdf_merl_npz/ims512_envmaph16_spp1'
-    outroot='/data/vision/billf/intrinsic/sim/output/train/merl'
+    proj_root='/data/vision/billf/intrinsic/sim'
+    repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
-    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0' --config='brdf.ini' --config_override="data_root=$data_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
+    data_root="$proj_root/data/brdf_merl_npz/ims512_envmaph16_spp1"
+    outroot="$proj_root/output/train/merl"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0' --config='brdf.ini' --config_override="data_root=$data_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
 
 1. Train a vanilla NeRF, optionally using multiple GPUs:
     ```bash
-    repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-    data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
-    imh='512'
-    near='2' # use '0.1' if real 360 data
-    far='6' # use '2' if real 360 data
-    outroot='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163'
+    scene='hotdog_2163'
+    proj_root='/data/vision/billf/intrinsic/sim'
+    repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
-    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,outroot=$outroot,viewer_prefix=$viewer_prefix"
+    data_root="$proj_root/data/selected/$scene"
+    imh='512'
+    if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
+        near='0.1'; far='2'
+    else
+        near='2'; far='6'
+    fi
+    outroot="$proj_root/output/train/${scene}_nerf"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
+   Check the quality of this NeRF geometry by inspecting the visualization HTML
+   for the alpha and normal maps. You might need to re-run this with another
+   random initialization if the estimated NeRF geometry is too off.
 
 1. Compute geometry buffers for all views by querying the trained NeRF:
     ```bash
-    repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-    data_root='/data/vision/billf/intrinsic/sim/data/render_outdoor_inten3_gi/hotdog_2163'
-    trained_nerf='/data/vision/billf/intrinsic/sim/output/train/hotdog_2163/lr5e-4'
-    out_root='/data/vision/billf/intrinsic/sim/output/surf/hotdog_2163'
+    scene='hotdog_2163'
+    proj_root='/data/vision/billf/intrinsic/sim'
+    repo_dir="$proj_root/code/nerfactor"
+    viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
+    data_root="$proj_root/data/selected/$scene"
+    trained_nerf="$proj_root/output/train/${scene}_nerf/lr5e-4"
+    out_root="$proj_root/output/surf/$scene"
     imh='512'
-    scene_bbox='' # '' for synthetic scenes, '-0.2,0.2,-0.4,0.4,-0.5,0.3' for vasedeck, and '-0.3,0.3,-0.3,0.3,-0.3,0.3' for pinecone
-    occu_thres='0' # '0' for synthetic scenes, and '0.5' for real scenes
+    if [[ "$scene" == pinecone* ]]; then
+        scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'; occu_thres='0.5'
+    elif [[ "$scene" == vasedeck* ]]; then
+        scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.3'; occu_thres='0.5'
+    else
+        scene_bbox=''; occu_thres='0'
+    fi
     mlp_chunk='375000' # bump this up until GPU gets OOM for faster computation
-    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/geometry_from_nerf_run.sh '0' --data_root="$data_root" --trained_nerf="$trained_nerf" --out_root="$out_root" --imh="$imh" --scene_bbox="$scene_bbox" --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/geometry_from_nerf_run.sh" '0' --data_root="$data_root" --trained_nerf="$trained_nerf" --out_root="$out_root" --imh="$imh" --scene_bbox="$scene_bbox" --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
     ```
 
 
@@ -71,32 +88,35 @@ Pre-train geometry MLPs (pre-training), jointly optimize shape, reflectance,
 and illumination (training and validation), and finally perform simultaneous
 relighting and view synthesis results (testing):
 ```bash
-# I. Shape Pre-Training
 scene='hotdog_2163'
-repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-data_root="/data/vision/billf/intrinsic/sim/data/selected/$scene"
+proj_root='/data/vision/billf/intrinsic/sim'
+repo_dir="$proj_root/code/nerfactor"
+viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
+
+# I. Shape Pre-Training
+data_root="$proj_root/data/selected/$scene"
 imh='512'
 if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
     near='0.1'; far='2'; use_nerf_alpha=true; color_correct_albedo=false
 else
     near='2'; far='6'; use_nerf_alpha=false; color_correct_albedo=true
 fi
-surf_root="/data/vision/billf/intrinsic/sim/output/surf/$scene"
-shape_outdir="/data/vision/billf/intrinsic/sim/output/train/${scene}_shape"
-viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
-REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='shape.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix"
+surf_root="$proj_root/output/surf/$scene"
+shape_outdir="$proj_root/output/train/${scene}_shape"
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='shape.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix"
 
 # II. Joint Optimization (training and validation)
 shape_ckpt="$shape_outdir/lr1e-2/checkpoints/ckpt-2"
-brdf_ckpt='/data/vision/billf/intrinsic/sim/output/train/merl/lr1e-2/checkpoints/ckpt-50'
-test_envmap_dir='/data/vision/billf/intrinsic/sim/data/envmaps/for-render_h16/test'
-outroot="/data/vision/billf/intrinsic/sim/output/train/${scene}_nerfactor"
-REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
+brdf_ckpt="$proj_root/output/train/merl/lr1e-2/checkpoints/ckpt-50"
+test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
+outroot="$proj_root/output/train/${scene}_nerfactor"
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
 
 # III. Simultaneous Relighting and View Synthesis (testing)
-ckpt="/data/vision/billf/intrinsic/sim/output/train/${scene}_nerfactor/lr1e-3/checkpoints/ckpt-10"
-REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/test_run.sh '0,1,2,3' --ckpt="$ckpt" --color_correct_albedo="$color_correct_albedo"
+ckpt="$outroot/lr1e-3/checkpoints/ckpt-10"
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" '0,1,2,3' --ckpt="$ckpt" --color_correct_albedo="$color_correct_albedo"
 ```
+
 Training and validation (II) will produce an HTML of the factorization results:
 normals, visibility, albedo, reflectance, and re-rendering. Testing (III) will
 produce a video visualization of the scene as viewed from novel views and relit
