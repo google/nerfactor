@@ -1,7 +1,7 @@
 # NeRFactor: Third-Party Code
 
 This folder contains third-party code. These functions are called by other
-functions, and you will not need to run these directly.
+functions, and you will NOT need to run these directly.
 
 
 ## MERL Utility Functions
