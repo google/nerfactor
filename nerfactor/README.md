@@ -76,7 +76,6 @@ relighting and view synthesis results (testing):
     repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
     data_root="/data/vision/billf/intrinsic/sim/data/selected/$scene"
     imh='512'
-    if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
         near='0.1'; far='2'; use_nerf_alpha=true; color_correct_albedo=false
     else
         near='2'; far='6'; use_nerf_alpha=false; color_correct_albedo=true
