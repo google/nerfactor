@@ -26,11 +26,9 @@ This is not an officially supported Google product.
     conda activate nerfactor
     ```
 
-### Tips
-
+Tips:
 * You can find the TensorFlow version, cuDNN version, and CUDA version in
   `environment.yml`.
-
 * The IPython dependency in `environment.yml` is for `IPython.embed()` alone.
   If you are not using that to insert breakpoints during debugging, you can
   take it out (it should not hurt to just leave it there).
