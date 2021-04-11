@@ -70,35 +70,33 @@ the end of the run.
 Pre-train geometry MLPs (pre-training), jointly optimize shape, reflectance,
 and illumination (training and validation), and finally perform simultaneous
 relighting and view synthesis results (testing):
+```bash
+# I. Shape Pre-Training
+scene='hotdog_2163'
+repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
+data_root="/data/vision/billf/intrinsic/sim/data/selected/$scene"
+imh='512'
+if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
+    near='0.1'; far='2'; use_nerf_alpha=true; color_correct_albedo=false
+else
+    near='2'; far='6'; use_nerf_alpha=false; color_correct_albedo=true
+fi
+surf_root="/data/vision/billf/intrinsic/sim/output/surf/$scene"
+shape_outdir="/data/vision/billf/intrinsic/sim/output/train/${scene}_shape"
+viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
+REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='shape.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix"
 
-    ```bash
-    # I. Shape Pre-Training
-    scene='hotdog_2163'
-    repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-    data_root="/data/vision/billf/intrinsic/sim/data/selected/$scene"
-    imh='512'
-    if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
-        near='0.1'; far='2'; use_nerf_alpha=true; color_correct_albedo=false
-    else
-        near='2'; far='6'; use_nerf_alpha=false; color_correct_albedo=true
-    fi
-    surf_root="/data/vision/billf/intrinsic/sim/output/surf/$scene"
-    shape_outdir="/data/vision/billf/intrinsic/sim/output/train/${scene}_shape"
-    viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
-    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='shape.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix"
+# II. Joint Optimization (training and validation)
+shape_ckpt="$shape_outdir/lr1e-2/checkpoints/ckpt-2"
+brdf_ckpt='/data/vision/billf/intrinsic/sim/output/train/merl/lr1e-2/checkpoints/ckpt-50'
+test_envmap_dir='/data/vision/billf/intrinsic/sim/data/envmaps/for-render_h16/test'
+outroot="/data/vision/billf/intrinsic/sim/output/train/${scene}_nerfactor"
+REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
 
-    # II. Joint Optimization (training and validation)
-    shape_ckpt="$shape_outdir/lr1e-2/checkpoints/ckpt-2"
-    brdf_ckpt='/data/vision/billf/intrinsic/sim/output/train/merl/lr1e-2/checkpoints/ckpt-50'
-    test_envmap_dir='/data/vision/billf/intrinsic/sim/data/envmaps/for-render_h16/test'
-    outroot="/data/vision/billf/intrinsic/sim/output/train/${scene}_nerfactor"
-    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/trainvali_run.sh '0,1,2,3' --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
-
-    # III. Simultaneous Relighting and View Synthesis (testing)
-    ckpt="/data/vision/billf/intrinsic/sim/output/train/${scene}_nerfactor/lr1e-3/checkpoints/ckpt-10"
-    REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/test_run.sh '0,1,2,3' --ckpt="$ckpt" --color_correct_albedo="$color_correct_albedo"
-    ```
-
+# III. Simultaneous Relighting and View Synthesis (testing)
+ckpt="/data/vision/billf/intrinsic/sim/output/train/${scene}_nerfactor/lr1e-3/checkpoints/ckpt-10"
+REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/test_run.sh '0,1,2,3' --ckpt="$ckpt" --color_correct_albedo="$color_correct_albedo"
+```
 Training and validation (II) will produce an HTML of the factorization results:
 normals, visibility, albedo, reflectance, and re-rendering. Testing (III) will
 produce a video visualization of the scene as viewed from novel views and relit
