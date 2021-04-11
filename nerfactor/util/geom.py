@@ -71,7 +71,7 @@ def gen_world2local(normal, eps=1e-6):
 
     # To avoid colinearity with some special normals that may pop up
     z = tf.convert_to_tensor((0, 0, 1), dtype=tf.float32) + eps
-    z = tf.tile(z[None, :], (normal.shape[0], 1))
+    z = tf.tile(z[None, :], (tf.shape(normal)[0], 1))
 
     # Tangents
     t = tf.linalg.cross(normal, z)
@@ -121,7 +121,7 @@ def dir2rusink(a, b):
             axis * tf.matmul(
                 vector, tf.transpose(axis)) * (1 - cos_ang)[:, None] + \
             tf.linalg.cross(
-                tf.tile(axis, (vector.shape[0], 1)), vector) * sin_ang[:, None]
+                tf.tile(axis, (tf.shape(vector)[0], 1)), vector) * sin_ang[:, None]
 
     # What is the incoming/outgoing direction in the Rusink. frame?
     diff = rot_vec(rot_vec(b, normal, -phi_h), binormal, -theta_h)

@@ -1,4 +1,4 @@
-name: nerfactor
+name: nerfactor24
 channels:
     - conda-forge
     - anaconda
@@ -13,6 +13,6 @@ dependencies:
     - pillow
     - opencv
     - pip:
-        - tensorflow==2.2.0
-    - cudatoolkit
-    - cudnn
+        - tensorflow==2.3
+    - cudatoolkit=10.1
+    - cudnn=7.6

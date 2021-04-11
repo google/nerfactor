@@ -283,8 +283,11 @@ class Model(ShapeModel):
         # ------ Loss
         pred = {
             'rgb': rgb_pred, 'normal': normal_pred, 'lvis': lvis_pred,
-            'albedo': albedo, 'brdf': brdf_prop,
-            'rgb_olat': rgb_olat, 'rgb_probes': rgb_probes}
+            'albedo': albedo, 'brdf': brdf_prop}
+        if rgb_olat is not None:
+            pred['rgb_olat'] = rgb_olat
+        if rgb_probes is not None:
+            pred['rgb_probes'] = rgb_probes
         gt = {'rgb': rgb, 'normal': normal, 'lvis': lvis, 'alpha': alpha}
         loss_kwargs = {
             'mode': mode, 'normal_jitter': normal_jitter,
@@ -368,9 +371,10 @@ class Model(ShapeModel):
             'DEFAULT', 'albedo_bias', fallback=0.1)
         mlp_layers = self.net['albedo_mlp']
         out_layer = self.net['albedo_out'] # output in [0, 1]
+        embedder = self.embedder['xyz']
 
         def chunk_func(surf):
-            surf_embed = self.embedder['xyz'](surf)
+            surf_embed = embedder(surf)
             albedo = out_layer(mlp_layers(surf_embed))
             return albedo
 
@@ -383,9 +387,10 @@ class Model(ShapeModel):
         normalize_z = self.config_brdf.getboolean('DEFAULT', 'normalize_z')
         mlp_layers = self.net['brdf_z_mlp']
         out_layer = self.net['brdf_z_out']
+        embedder = self.embedder['xyz']
 
         def chunk_func(surf):
-            surf_embed = self.embedder['xyz'](surf)
+            surf_embed = embedder(surf)
             brdf_z = out_layer(mlp_layers(surf_embed))
             return brdf_z
 
@@ -419,11 +424,16 @@ class Model(ShapeModel):
         # Predict BRDF values given identities and Rusink.
         mlp_layers = self.brdf_model.net['brdf_mlp']
         out_layer = self.brdf_model.net['brdf_out']
+        embedder = self.embedder['rusink']
 
         def chunk_func(rusink_z):
             rusink, z = rusink_z[:, :3], rusink_z[:, 3:]
-            rusink_embed = self.embedder['rusink'](rusink)
+            rusink_embed = embedder(rusink)
             z_rusink = tf.concat((z, rusink_embed), axis=1)
+            # Strange that shape can't be inferred from the restored
+            # `self.brdf_model`, so we set it manually
+            z_rusink = tf.ensure_shape(
+                z_rusink, (None, self.z_dim + embedder.out_dims))
             brdf = out_layer(mlp_layers(z_rusink))
             return brdf
 
