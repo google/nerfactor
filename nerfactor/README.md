@@ -97,6 +97,7 @@ relighting and view synthesis results (testing):
     ckpt="/data/vision/billf/intrinsic/sim/output/train/${scene}_nerfactor/lr1e-3/checkpoints/ckpt-10"
     REPO_DIR="$repo_dir" "$repo_dir"/nerfactor/test_run.sh '0,1,2,3' --ckpt="$ckpt" --color_correct_albedo="$color_correct_albedo"
     ```
+
 Training and validation (II) will produce an HTML of the factorization results:
 normals, visibility, albedo, reflectance, and re-rendering. Testing (III) will
 produce a video visualization of the scene as viewed from novel views and relit
