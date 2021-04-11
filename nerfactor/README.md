@@ -37,6 +37,7 @@ the end of the run.
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/brdf_merl_npz/ims512_envmaph16_spp1"
     outroot="$proj_root/output/train/merl"
+
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0' --config='brdf.ini' --config_override="data_root=$data_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
 
@@ -54,6 +55,7 @@ the end of the run.
         near='2'; far='6'
     fi
     outroot="$proj_root/output/train/${scene}_nerf"
+
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
    Check the quality of this NeRF geometry by inspecting the visualization HTML
@@ -78,6 +80,7 @@ the end of the run.
         scene_bbox=''; occu_thres='0'
     fi
     mlp_chunk='375000' # bump this up until GPU gets OOM for faster computation
+
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/geometry_from_nerf_run.sh" '0' --data_root="$data_root" --trained_nerf="$trained_nerf" --out_root="$out_root" --imh="$imh" --scene_bbox="$scene_bbox" --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
     ```
 
@@ -112,12 +115,13 @@ test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
 outroot="$proj_root/output/train/${scene}_nerfactor"
 REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
 
+
 # III. Simultaneous Relighting and View Synthesis (testing)
 ckpt="$outroot/lr1e-3/checkpoints/ckpt-10"
 if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" '0,1,2,3' --ckpt="$ckpt"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" '0' --ckpt="$ckpt"
 else
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" '0,1,2,3' --ckpt="$ckpt" --color_correct_albedo
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" '0' --ckpt="$ckpt" --color_correct_albedo
 fi
 ```
 
