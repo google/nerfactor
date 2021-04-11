@@ -97,9 +97,9 @@ viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 data_root="$proj_root/data/selected/$scene"
 imh='512'
 if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
-    near='0.1'; far='2'; use_nerf_alpha=true; color_correct_albedo=false
+    near='0.1'; far='2'; use_nerf_alpha=true
 else
-    near='2'; far='6'; use_nerf_alpha=false; color_correct_albedo=true
+    near='2'; far='6'; use_nerf_alpha=false
 fi
 surf_root="$proj_root/output/surf/$scene"
 shape_outdir="$proj_root/output/train/${scene}_shape"
@@ -114,7 +114,11 @@ REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='
 
 # III. Simultaneous Relighting and View Synthesis (testing)
 ckpt="$outroot/lr1e-3/checkpoints/ckpt-10"
-REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" '0,1,2,3' --ckpt="$ckpt" --color_correct_albedo="$color_correct_albedo"
+if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" '0,1,2,3' --ckpt="$ckpt"
+else
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" '0,1,2,3' --ckpt="$ckpt" --color_correct_albedo
+fi
 ```
 
 Training and validation (II) will produce an HTML of the factorization results:
