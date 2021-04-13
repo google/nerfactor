@@ -54,9 +54,14 @@ the end of the run.
     else
         near='2'; far='6'
     fi
+    if [[ "$scene" == ficus* ]]; then
+        lr='1e-4'
+    else
+        lr='5e-4'
+    fi
     outroot="$proj_root/output/train/${scene}_nerf"
 
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,outroot=$outroot,viewer_prefix=$viewer_prefix"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,lr=$lr,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
    Check the quality of this NeRF geometry by inspecting the visualization HTML
    for the alpha and normal maps. You might need to re-run this with another
