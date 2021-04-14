@@ -13,6 +13,6 @@ dependencies:
     - pillow
     - opencv
     - pip:
-        - tensorflow==2.3
+        - tensorflow==2.2
     - cudatoolkit=10.1
     - cudnn=7.6

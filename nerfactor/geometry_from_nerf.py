@@ -186,17 +186,6 @@ def process_view(config, model, datapipe, skip):
         write_lvis(lvis, out_dir)
 
 
-def average_supersamples(map_supersampled, sps):
-    maps = []
-    for i in range(sps):
-        for j in range(sps):
-            sample = map_supersampled[i::sps, j::sps, ...]
-            sample = sample[None, ...]
-            maps.append(sample)
-    maps = tf.concat(maps, axis=0)
-    return tf.reduce_mean(maps, axis=0)
-
-
 def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
     n_samples_coarse = config.getint('DEFAULT', 'n_samples_coarse')
     n_samples_fine = config.getint('DEFAULT', 'n_samples_fine')
@@ -336,22 +325,6 @@ def compute_depth_and_normal(model, rayo, rayd, config):
     return occu, exp_depth, exp_normal
 
 
-def check_bounds(pts):
-    if FLAGS.scene_bbox is None or FLAGS.scene_bbox == '':
-        return tf.ones((tf.shape(pts)[0],), dtype=bool)
-    # Parse bounds
-    x_min, x_max, y_min, y_max, z_min, z_max = FLAGS.scene_bbox.split(',')
-    # Assume cube bottom center at world origin on XY plane
-    x_min, x_max = float(x_min), float(x_max)
-    y_min, y_max = float(y_min), float(y_max)
-    z_min, z_max = float(z_min), float(z_max)
-    in_x = tf.logical_and(pts[:, 0] >= x_min, pts[:, 0] <= x_max)
-    in_y = tf.logical_and(pts[:, 1] >= y_min, pts[:, 1] <= y_max)
-    in_z = tf.logical_and(pts[:, 2] >= z_min, pts[:, 2] <= z_max)
-    in_bounds = tf.logical_and(in_x, tf.logical_and(in_y, in_z))
-    return in_bounds
-
-
 def eval_sigma_mlp(model, pts, use_fine=False):
     embedder = model.embedder['xyz']
     if use_fine:
@@ -382,17 +355,42 @@ def eval_sigma_mlp(model, pts, use_fine=False):
     return sigma
 
 
+def average_supersamples(map_supersampled, sps):
+    maps = []
+    for i in range(sps):
+        for j in range(sps):
+            sample = map_supersampled[i::sps, j::sps, ...]
+            sample = sample[None, ...]
+            maps.append(sample)
+    maps = tf.concat(maps, axis=0)
+    return tf.reduce_mean(maps, axis=0)
+
+
+def check_bounds(pts):
+    if FLAGS.scene_bbox is None or FLAGS.scene_bbox == '':
+        return tf.ones((tf.shape(pts)[0],), dtype=bool)
+    # Parse bounds
+    x_min, x_max, y_min, y_max, z_min, z_max = FLAGS.scene_bbox.split(',')
+    # Assume cube bottom center at world origin on XY plane
+    x_min, x_max = float(x_min), float(x_max)
+    y_min, y_max = float(y_min), float(y_max)
+    z_min, z_max = float(z_min), float(z_max)
+    in_x = tf.logical_and(pts[:, 0] >= x_min, pts[:, 0] <= x_max)
+    in_y = tf.logical_and(pts[:, 1] >= y_min, pts[:, 1] <= y_max)
+    in_z = tf.logical_and(pts[:, 2] >= z_min, pts[:, 2] <= z_max)
+    in_bounds = tf.logical_and(in_x, tf.logical_and(in_y, in_z))
+    return in_bounds
+
+
 def write_lvis(lvis, out_dir):
     # Dump raw
     raw_out = join(out_dir, 'lvis.npy')
     with open(raw_out, 'wb') as h:
         np.save(h, lvis)
-
     # Visualize the average across all lights as an image
     vis_out = join(out_dir, 'lvis.png')
     lvis_avg = np.mean(lvis, axis=2)
     xm.io.img.write_arr(lvis_avg, vis_out, clip=True)
-
     # Visualize light visibility for each light pixel
     vis_out = join(out_dir, 'lvis.mp4')
     frames = []
@@ -406,12 +404,10 @@ def write_lvis(lvis, out_dir):
 
 def write_xyz(xyz_arr, out_dir):
     arr = xyz_arr.numpy()
-
     # Dump raw
     raw_out = join(out_dir, 'xyz.npy')
     with open(raw_out, 'wb') as h:
         np.save(h, arr)
-
     # Visualization
     vis_out = join(out_dir, 'xyz.png')
     arr_norm = (arr - arr.min()) / (arr.max() - arr.min())
@@ -420,12 +416,10 @@ def write_xyz(xyz_arr, out_dir):
 
 def write_normal(arr, out_dir):
     arr = arr.numpy()
-
     # Dump raw
     raw_out = join(out_dir, 'normal.npy')
     with open(raw_out, 'wb') as h:
         np.save(h, arr)
-
     # Visualization
     vis_out = join(out_dir, 'normal.png')
     arr = (arr + 1) / 2
@@ -451,9 +445,7 @@ def restore_model(config, ckpt_path):
     model_name = config.get('DEFAULT', 'model')
     Model = models.get_model_class(model_name)
     model = Model(config)
-
     ioutil.restore_model(model, ckpt_path)
-
     return model
 
 

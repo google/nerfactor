@@ -74,16 +74,21 @@ the end of the run.
     repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
-    trained_nerf="$proj_root/output/train/${scene}_nerf/lr5e-4"
-    out_root="$proj_root/output/surf/$scene"
     imh='512'
+    if [[ "$scene" == ficus* ]]; then
+        lr='1e-4'
+    else
+        lr='5e-4'
+    fi
+    trained_nerf="$proj_root/output/train/${scene}_nerf/lr$lr"
     if [[ "$scene" == pinecone* ]]; then
         scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'; occu_thres='0.5'
     elif [[ "$scene" == vasedeck* ]]; then
-        scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.3'; occu_thres='0.5'
+        scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'; occu_thres='0.5'
     else
         scene_bbox=''; occu_thres='0'
     fi
+    out_root="$proj_root/output/surf/$scene"
     mlp_chunk='375000' # bump this up until GPU gets OOM for faster computation
 
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/geometry_from_nerf_run.sh" '0' --data_root="$data_root" --trained_nerf="$trained_nerf" --out_root="$out_root" --imh="$imh" --scene_bbox="$scene_bbox" --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
