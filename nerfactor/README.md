@@ -10,7 +10,7 @@ specified in `models/nerfactor.py`, and the main data loader is specified in
 `datasets/nerf_shape.py`.
 
 Given multi-view, posed images of the scene and the MERL BRDF dataset, we (1)
-first learn data-drive BRDF priors, (*2) distill NeRF's (noisy) geometry so
+first learn data-drive BRDF priors, (2) distill NeRF's (noisy) geometry so
 that we can refine it, and finally (3) jointly optimize for the shape,
 reflectance, and illumination.
 
@@ -54,7 +54,7 @@ the end of the run.
     else
         near='2'; far='6'
     fi
-    if [[ "$scene" == ficus* ]]; then
+    if [[ "$scene" == ficus* || "$scene" == 'hotdog_probe_16-00_latlongmap' ]]; then
         lr='1e-4'
     else
         lr='5e-4'
@@ -65,7 +65,7 @@ the end of the run.
     ```
    Check the quality of this NeRF geometry by inspecting the visualization HTML
    for the alpha and normal maps. You might need to re-run this with another
-   random initialization if the estimated NeRF geometry is too off.
+   learning rate if the estimated NeRF geometry is too off.
 
 1. Compute geometry buffers for all views by querying the trained NeRF:
     ```bash
@@ -75,7 +75,7 @@ the end of the run.
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
     imh='512'
-    if [[ "$scene" == ficus* ]]; then
+    if [[ "$scene" == ficus* || "$scene" == 'hotdog_probe_16-00_latlongmap' ]]; then
         lr='1e-4'
     else
         lr='5e-4'
