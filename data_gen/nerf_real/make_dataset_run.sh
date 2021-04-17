@@ -17,5 +17,5 @@
 set -e
 
 PYTHONPATH="$REPO_DIR" \
-    python "$REPO_DIR"/data_gen/real/make_dataset.py \
+    python "$REPO_DIR"/data_gen/nerf_real/make_dataset.py \
     "$@"
