@@ -32,13 +32,17 @@ the end of the run.
 1. (Only once for all scenes) Learn data-driven BRDF priors (using a single
    GPU suffices):
     ```bash
+    # I. Learning BRDF Priors (training and validation)
     proj_root='/data/vision/billf/intrinsic/sim'
     repo_dir="$proj_root/code/nerfactor"
-    viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/brdf_merl_npz/ims512_envmaph16_spp1"
     outroot="$proj_root/output/train/merl"
-
+    viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0' --config='brdf.ini' --config_override="data_root=$data_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
+
+    # II. Exploring the Learned Space (validation and testing)
+    ckpt="$outroot/lr1e-2/checkpoints/ckpt-50"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/explore_brdf_space_run.sh" '0' --ckpt="$ckpt"
     ```
 
 1. Train a vanilla NeRF, optionally using multiple GPUs:
