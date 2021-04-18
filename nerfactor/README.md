@@ -81,12 +81,13 @@ the end of the run.
         lr='5e-4'
     fi
     trained_nerf="$proj_root/output/train/${scene}_nerf/lr$lr"
+    occu_thres='0.5'
     if [[ "$scene" == pinecone* ]]; then
-        scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'; occu_thres='0.5'
+        scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'
     elif [[ "$scene" == vasedeck* ]]; then
-        scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'; occu_thres='0.5'
+        scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'
     else
-        scene_bbox=''; occu_thres='0'
+        scene_bbox='' 
     fi
     out_root="$proj_root/output/surf/$scene"
     mlp_chunk='375000' # bump this up until GPU gets OOM for faster computation

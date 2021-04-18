@@ -38,6 +38,7 @@ def main(_):
 
     # ------ Training and validation
 
+    from IPython import embed; embed()
     # Load poses
     poses_path = join(FLAGS.scene_dir, 'poses_bounds.npy')
     poses_arr = xm.io.np.read_or_write(poses_path)

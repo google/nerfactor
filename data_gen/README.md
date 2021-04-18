@@ -48,7 +48,7 @@ TODO
     ```
 
 
-## [Philip et al. 2019](https://repo-sam.inria.fr/fungraph/deep-relighting/index.html): Real Captures
+## Philip et al. 2019: Real Captures
 
 1. Download a real capture from
    [here](https://repo-sam.inria.fr/fungraph/deep-relighting/index.html).

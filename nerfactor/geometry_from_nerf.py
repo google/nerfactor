@@ -57,24 +57,7 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean('debug', False, "whether in debug mode")
 FLAGS = flags.FLAGS
 
-logger = logutil.Logger(loggee="query_nerf")
-
-
-def gen_args():
-    args = []
-    if FLAGS.debug:
-        args.append(('train', 33))
-        return args
-    for mode in ('train', 'vali', 'test'):
-        if mode == 'vali':
-            mode_str = 'val'
-        else:
-            mode_str = mode
-        for config_dir in xm.os.sortglob(FLAGS.data_root, f'{mode_str}_???'):
-            i = int(basename(config_dir).split('_')[1])
-            args.append((mode, i))
-    assert args, "No arguments generated"
-    return args
+logger = logutil.Logger(loggee="geometry_from_nerf")
 
 
 def main(_):
@@ -92,98 +75,103 @@ def main(_):
     if FLAGS.imh is not None: # if using a new image resolution
         config.set('DEFAULT', 'imh', str(FLAGS.imh))
 
-    # Make datasets
-    datapipes = {}
-    for mode in ('train', 'vali', 'test'):
-        datapipes[mode] = make_datapipe(config, mode)
-
     # Restore model
     model = restore_model(config, latest_ckpt)
 
-    # Do the computation, sequentially
-    args = gen_args()
-    for mode, skip in tqdm(args, desc="Views"):
-        process_view(config, model, datapipes[mode], skip)
+    for mode in ('train', 'vali', 'test'):
+        # Make datapipe
+        n_views, datapipe = make_datapipe(config, mode)
+
+        # Process all views of this mode
+        for batch in tqdm(datapipe, desc=f"Views ({mode})", total=n_views):
+            process_view(config, model, batch)
+
+            if FLAGS.debug:
+                return
 
 
-def process_view(config, model, datapipe, skip):
+def process_view(config, model, batch):
     sps = int(np.sqrt(FLAGS.spp)) # no need to check if square
 
-    # Run inference on a single batch
-    for batch in datapipe.skip(skip).take(1):
-        id_, hw, rayo, rayd, _ = batch
-        id_ = id_[0].numpy().decode()
-        hw = hw[0, :]
+    id_, hw, rayo, rayd, _ = batch
+    id_ = id_[0].numpy().decode()
+    hw = hw[0, :]
 
-        rayd = tf.linalg.l2_normalize(rayd, axis=1)
+    rayd = tf.linalg.l2_normalize(rayd, axis=1)
 
-        out_dir = join(FLAGS.out_root, id_)
-        if not exists(out_dir):
-            makedirs(out_dir)
+    out_dir = join(FLAGS.out_root, id_)
+    if not exists(out_dir):
+        makedirs(out_dir)
 
-        # Is this job done already?
-        expected = [
-            join(out_dir, 'alpha.png'),
-            join(out_dir, 'lvis.npy'), join(out_dir, 'lvis.png'),
-            join(out_dir, 'normal.npy'), join(out_dir, 'normal.png'),
-            join(out_dir, 'xyz.npy'), join(out_dir, 'xyz.png')]
-        all_exist = all(exists(x) for x in expected)
-        if all_exist:
-            logger.info(f"Skipping {id_} since it's done already")
-            return
+    # Is this job done already?
+    expected = [
+        join(out_dir, 'alpha.png'),
+        join(out_dir, 'lvis.npy'), join(out_dir, 'lvis.png'),
+        join(out_dir, 'normal.npy'), join(out_dir, 'normal.png'),
+        join(out_dir, 'xyz.npy'), join(out_dir, 'xyz.png')]
+    all_exist = all(exists(x) for x in expected)
+    if all_exist:
+        logger.info(f"Skipping {id_} since it's done already")
+        return
 
-        # ------ Camera to object
+    # ------ Tracing from Camera to Object
 
-        occu, exp_depth, exp_normal = compute_depth_and_normal(
-            model, rayo, rayd, config)
+    occu, exp_depth, exp_normal = compute_depth_and_normal(
+        model, rayo, rayd, config)
 
-        # Discard surface points that do not meet the occupancy threshold
-        transp_ind = tf.where(occu < FLAGS.occu_thres)
-        occu = tf.tensor_scatter_nd_update(
-            occu, transp_ind, tf.zeros((tf.shape(transp_ind)[0],)))
+    # Clip smaller-than-threshold alpha to 0
+    transp_ind = tf.where(occu < FLAGS.occu_thres)
+    occu = tf.tensor_scatter_nd_update(
+        occu, transp_ind, tf.zeros((tf.shape(transp_ind)[0],)))
 
-        # Write alpha map
-        alpha_map = tf.reshape(occu, hw * sps)
-        alpha_map = average_supersamples(alpha_map, sps)
-        alpha_map = tf.clip_by_value(alpha_map, 0., 1.)
-        write_alpha(alpha_map, out_dir)
+    # Write alpha map
+    alpha_map = tf.reshape(occu, hw * sps)
+    alpha_map = average_supersamples(alpha_map, sps)
+    alpha_map = tf.clip_by_value(alpha_map, 0., 1.)
+    write_alpha(alpha_map, out_dir)
 
-        # Write XYZ map, whose background filling value is (0, 0, 0)
-        surf = rayo + rayd * exp_depth[:, None] # Surface XYZs
-        xyz_map = tf.reshape(surf, (hw[0] * sps, hw[1] * sps, 3))
-        xyz_map = average_supersamples(xyz_map, sps)
-        xyz_map = imgutil.alpha_blend(xyz_map, alpha_map)
-        write_xyz(xyz_map, out_dir)
+    # Write XYZ map, whose background filling value is (0, 0, 0)
+    surf = rayo + rayd * exp_depth[:, None] # Surface XYZs
+    xyz_map = tf.reshape(surf, (hw[0] * sps, hw[1] * sps, 3))
+    xyz_map = average_supersamples(xyz_map, sps)
+    xyz_map = imgutil.alpha_blend(xyz_map, alpha_map)
+    write_xyz(xyz_map, out_dir)
 
-        # Write normal map, whose background filling value is (0, 1, 0),
-        # since using (0, 0, 0) leads to (0, 0, 0) tangents
-        normal_map = tf.reshape(exp_normal, (hw[0] * sps, hw[1] * sps, 3))
-        normal_map = average_supersamples(normal_map, sps)
-        normal_map_bg = tf.convert_to_tensor((0, 1, 0), dtype=tf.float32)
-        normal_map_bg = tf.tile(normal_map_bg[None, None, :], tuple(hw) + (1,))
-        normal_map = imgutil.alpha_blend(normal_map, alpha_map, normal_map_bg)
-        normal_map = tf.linalg.l2_normalize(normal_map, axis=2)
-        write_normal(normal_map, out_dir)
+    # Write normal map, whose background filling value is (0, 1, 0),
+    # since using (0, 0, 0) leads to (0, 0, 0) tangents
+    normal_map = tf.reshape(exp_normal, (hw[0] * sps, hw[1] * sps, 3))
+    normal_map = average_supersamples(normal_map, sps)
+    normal_map_bg = tf.convert_to_tensor((0, 1, 0), dtype=tf.float32)
+    normal_map_bg = tf.tile(normal_map_bg[None, None, :], tuple(hw) + (1,))
+    normal_map = imgutil.alpha_blend(normal_map, alpha_map, normal_map_bg)
+    normal_map = tf.linalg.l2_normalize(normal_map, axis=2)
+    normal_map = tf.clip_by_value(normal_map, -1., 1.)
+    write_normal(normal_map, out_dir)
 
-        # ------ Object to light
+    # ------ Tracing from Object to light
 
-        # Don't waste memory on those "miss" rays
-        hit = tf.reshape(alpha_map, (-1,)) > 0.
-        surf = tf.boolean_mask(surf, hit, axis=0)
-        normal = tf.boolean_mask(exp_normal, hit, axis=0)
+    # Don't waste memory on those "miss" rays
+    hit = tf.reshape(alpha_map, (-1,)) > 0. # alpha > 0 means occu > occu_thres
+    surf = tf.boolean_mask(surf, hit, axis=0)
+    normal = tf.boolean_mask(exp_normal, hit, axis=0)
 
-        lvis_hit = compute_light_visibility(
-            model, surf, normal, config) # (n_surf_pts, n_lights)
-        n_lights = lvis_hit.shape[1]
+    lvis_hit = compute_light_visibility(
+        model, surf, normal, config) # (n_surf_pts, n_lights)
+    lvis_hit = np.clip(lvis_hit, 0., 1.)
+    n_lights = lvis_hit.shape[1]
 
-        # Put the light visibility values into the full tensor
-        hit_map = hit.numpy().reshape(tuple(hw) + (1,))
-        lvis = np.zeros( # (imh, imw, n_lights)
-            tuple(hw) + (n_lights,), dtype=np.float32)
-        lvis[np.broadcast_to(hit_map, lvis.shape)] = lvis_hit.ravel()
+    # Put the light visibility values into the full tensor
+    hit_map = hit.numpy().reshape(tuple(hw) + (1,))
+    lvis = np.zeros( # (imh, imw, n_lights)
+        tuple(hw) + (n_lights,), dtype=np.float32)
+    lvis[np.broadcast_to(hit_map, lvis.shape)] = lvis_hit.ravel()
 
-        # Write light visibility map
-        write_lvis(lvis, out_dir)
+    # Mask visibility maps with alpha maps
+    for i in range(lvis.shape[2]):
+        lvis[:, :, i] = imgutil.alpha_blend(lvis[:, :, i], alpha_map)
+
+    # Write light visibility map
+    write_lvis(lvis, out_dir)
 
 
 def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
@@ -390,13 +378,12 @@ def write_lvis(lvis, out_dir):
     # Visualize the average across all lights as an image
     vis_out = join(out_dir, 'lvis.png')
     lvis_avg = np.mean(lvis, axis=2)
-    xm.io.img.write_arr(lvis_avg, vis_out, clip=True)
+    xm.io.img.write_arr(lvis_avg, vis_out)
     # Visualize light visibility for each light pixel
     vis_out = join(out_dir, 'lvis.mp4')
     frames = []
     for i in range(lvis.shape[2]): # for each light pixel
-        frame = np.clip(lvis[:, :, i], 0, 1)
-        frame = xm.img.denormalize_float(frame)
+        frame = xm.img.denormalize_float(lvis[:, :, i])
         frame = np.dstack([frame] * 3)
         frames.append(frame)
     xm.vis.video.make_video(frames, outpath=vis_out, fps=FLAGS.fps)
@@ -423,7 +410,7 @@ def write_normal(arr, out_dir):
     # Visualization
     vis_out = join(out_dir, 'normal.png')
     arr = (arr + 1) / 2
-    xm.io.img.write_arr(arr, vis_out, clip=True)
+    xm.io.img.write_arr(arr, vis_out)
 
 
 def write_alpha(arr, out_dir):
@@ -437,8 +424,9 @@ def make_datapipe(config, mode):
     no_batch = config.getboolean('DEFAULT', 'no_batch')
     Dataset = datasets.get_dataset_class(dataset_name)
     dataset = Dataset(config, mode, always_all_rays=True, spp=FLAGS.spp)
+    n_views = dataset.get_n_views()
     datapipe = dataset.build_pipeline(no_batch=no_batch, no_shuffle=True)
-    return datapipe
+    return n_views, datapipe
 
 
 def restore_model(config, ckpt_path):
