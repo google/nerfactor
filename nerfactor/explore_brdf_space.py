@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os.path import join, basename
+from os.path import join, basename, exists
 from absl import app, flags
 from tqdm import tqdm
 
@@ -62,9 +62,20 @@ def main(_):
     logger.info("Running inference")
     for batch_i, batch in enumerate(
             tqdm(datapipe, desc="BRDFs", total=n_brdfs)):
+        outdir = join(outroot, f'batch{batch_i:09d}')
+
+        # Skip if this BRDF is done
+        expects = [
+            join(outdir, 'cslice.png'), join(outdir, 'log10_brdf.png'),
+            join(outdir, 'metadata.json'), join(outdir, 'render.png'),
+            join(outdir, 'z.png')]
+        if all(exists(x) for x in expects):
+            continue
+
+        # Run inference
         _, _, _, to_vis = model.call(batch, mode='test')
+
         # Visualize
-        outdir = join(outroot, 'batch{i:09d}'.format(i=batch_i))
         model.vis_batch(to_vis, outdir, mode='test')
 
     # Compile all visualized batches into a consolidated view (e.g., an

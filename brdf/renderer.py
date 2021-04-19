@@ -159,7 +159,7 @@ class SphereRenderer:
         # other occulusion
         lvis = np.tile(self.lvis[:, :, :, None], (1, 1, 1, 3))
         # Mask out non-visible lights
-        light = lvis * light# + (1 - lvis) * 0
+        light = lvis * light
         # Compute light contribution
         light_contrib = light * self.lcos[:, :, :, None] * lareas[:, :, :, None]
         return light_contrib
