@@ -16,7 +16,6 @@
 
 from os.path import join, basename
 import numpy as np
-from tqdm import tqdm
 import tensorflow as tf
 
 from third_party.xiuminglib import xiuminglib as xm
@@ -116,10 +115,7 @@ class Model(BaseModel):
         out_layer = self.net['brdf_out']
         # Chunk by chunk to avoid OOM
         chunks, chunks_reci = [], []
-        iterator = range(0, rusink.shape[0], self.mlp_chunk)
-        if len(iterator) > 1:
-            iterator = tqdm(iterator, desc="MLP Chunks")
-        for i in iterator:
+        for i in range(0, rusink.shape[0], self.mlp_chunk):
             end_i = min(rusink.shape[0], i + self.mlp_chunk)
             z_chunk = z[i:end_i]
             rusink_chunk = rusink[i:end_i, :]

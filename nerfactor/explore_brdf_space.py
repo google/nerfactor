@@ -15,7 +15,6 @@
 from os.path import join, basename
 from absl import app, flags
 from tqdm import tqdm
-import tensorflow as tf
 
 from third_party.xiuminglib import xiuminglib as xm
 from nerfactor import datasets
@@ -48,7 +47,7 @@ def main(_):
     dataset_name = config.get('DEFAULT', 'dataset')
     Dataset = datasets.get_dataset_class(dataset_name)
     dataset = Dataset(config, 'test', debug=FLAGS.debug)
-    n_views = dataset.get_n_views()
+    n_brdfs = dataset.get_n_brdfs()
     no_batch = config.getboolean('DEFAULT', 'no_batch')
     datapipe = dataset.build_pipeline(no_batch=no_batch, no_shuffle=True)
 
@@ -62,7 +61,7 @@ def main(_):
     # Run inference on all batches
     logger.info("Running inference")
     for batch_i, batch in enumerate(
-            tqdm(datapipe, desc="BRDFs", total=n_views)):
+            tqdm(datapipe, desc="BRDFs", total=n_brdfs)):
         _, _, _, to_vis = model.call(batch, mode='test')
         # Visualize
         outdir = join(outroot, 'batch{i:09d}'.format(i=batch_i))

@@ -27,54 +27,52 @@ logger = logutil.Logger(loggee="datasets/brdf_merl")
 
 
 class Dataset(BaseDataset):
-    def __init__(self, config, mode, debug=False):
+    def __init__(
+            self, config, mode, debug=False, seed=0, n_iden=20, n_between=11):
         # Get all BRDF names
-        self.root = config.get('DEFAULT', 'data_root')
-        train_paths = xm.os.sortglob(self.root, f'{mode}*.npz')
+        root = config.get('DEFAULT', 'data_root')
+        train_paths = xm.os.sortglob(root, 'train_*.npz')
+        vali_paths = xm.os.sortglob(root, 'vali_*.npz')
+        test_paths = xm.os.sortglob(root, 'test*.npz')
+        assert len(test_paths) == 1, (
+            "There should be a single set of test coordinates, shared by "
+            "all identities")
         self.brdf_names = [
             basename(x)[len('train_'):-len('.npz')] for x in train_paths]
-        # Parent init.
-        super().__init__(config, mode, debug=debug)
         # Cache the test data since it's shared by all BRDF identities;
         # this would save us from loading it over and over again
-        if mode == 'test':
-            paths = xm.os.sortglob(self.root, f'{mode}*.npz')
-            assert len(paths) == 1, (
-                "There should be a single set of test coordinates, shared by "
-                "all identities")
-            test_data = ioutil.load_np(paths[0])
-        else:
-            test_data = None
-        self.test_data = test_data
+        self.test_data = ioutil.load_np(test_paths[0])
+        # In testing, there is a single file of Rusink., and we need to
+        # fake some paths, which are in fact material names
+        test_paths = []
+        # First 100: novel Rusink., but seen identities
+        test_paths += self.brdf_names
+        # Next: novel Rusink. and interpolated identities
+        np.random.seed(seed) # fix random seed
+        mats = np.random.choice(self.brdf_names, n_iden, replace=False)
+        i = 0
+        for mat_i in range(n_iden - 1):
+            mat1, mat2 = mats[mat_i], mats[mat_i + 1]
+            for a in np.linspace(1, 0, n_between, endpoint=True):
+                b = 1 - a
+                id_ = f'{i:06d}_{a:f}_{mat1}_{b:f}_{mat2}'
+                test_paths.append(id_)
+                i += 1
+        np.random.seed() # restore random seed
+        self.paths = {
+            'train': train_paths, 'vali': vali_paths, 'test': test_paths}
+        # Parent init.
+        super().__init__(config, mode, debug=debug)
 
     def _get_batch_size(self):
         bs = self.config.getint('DEFAULT', 'n_rays_per_step')
         return bs
 
-    # pylint: disable=arguments-differ
-    def _glob(self, seed=0, n_iden=20, n_between=11):
-        if self.mode == 'test':
-            # In testing, there is a single file of Rusink., and we need to
-            # fake some paths, which are in fact material names
-            paths = []
-            # First 100: novel Rusink., but seen identities
-            for id_ in self.brdf_names:
-                paths.append(id_)
-            # Next: novel Rusink. and interpolated identities
-            np.random.seed(seed) # fix random seed
-            mats = np.random.choice(self.brdf_names, n_iden, replace=False)
-            i = 0
-            for mat_i in range(n_iden - 1):
-                mat1, mat2 = mats[mat_i], mats[mat_i + 1]
-                for a in np.linspace(1, 0, n_between, endpoint=True):
-                    id_ = '{i:06d}_{a:f}_{m1}_{b:f}_{m2}'.format(
-                        i=i, a=a, m1=mat1, b=1 - a, m2=mat2)
-                    paths.append(id_)
-                    i += 1
-            np.random.seed() # restore random seed
-        else:
-            paths = xm.os.sortglob(
-                self.root, '{mode}*.npz'.format(mode=self.mode))
+    def get_n_brdfs(self):
+        return len(self.paths[self.mode])
+
+    def _glob(self):
+        paths = self.paths[self.mode]
         logger.info("Number of '%s' identities: %d", self.mode, len(paths))
         return paths
 

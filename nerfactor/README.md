@@ -91,7 +91,7 @@ the end of the run.
     elif [[ "$scene" == vasedeck* ]]; then
         scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'
     else
-        scene_bbox='' 
+        scene_bbox=''
     fi
     out_root="$proj_root/output/surf/$scene"
     mlp_chunk='375000' # bump this up until GPU gets OOM for faster computation
