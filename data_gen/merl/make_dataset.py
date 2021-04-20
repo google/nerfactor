@@ -28,11 +28,12 @@ flags.DEFINE_float('vali_frac', 0.01, "fraction of data used for validation")
 flags.DEFINE_string(
     'envmap_path', 'point', "light probe path or a special string like 'point'")
 flags.DEFINE_integer('envmap_h', 16, "light probe height")
-flags.DEFINE_float('envmap_inten', 1., "light probe intensity")
+flags.DEFINE_float('envmap_inten', 40., "light probe intensity")
 flags.DEFINE_float(
-    'slice_percentile', 80, "clip percentile for visualizing characteristic slice")
-flags.DEFINE_integer('ims', 256, "render size during visualization")
-flags.DEFINE_integer('spp', 64, "samples per pixel for BRDF rendering")
+    'slice_percentile', 80,
+    "clip percentile for visualizing characteristic slice")
+flags.DEFINE_integer('ims', 128, "render size during visualization")
+flags.DEFINE_integer('spp', 1, "samples per pixel for BRDF rendering")
 flags.DEFINE_string('outdir', '', "output directory")
 flags.DEFINE_boolean(
     'overwrite', False, "whether to remove output folder if it already exists")
@@ -73,7 +74,6 @@ def main(_):
     for i, path in enumerate(tqdm(brdf_paths, desc="Training & Validation")):
         brdf = MERL(path=path)
 
-        '''
         rusink = brdf.tbl[:, :3]
         refl = brdf.tbl[:, 3:]
         refl = xm.img.rgb2lum(refl)
@@ -106,7 +106,6 @@ def main(_):
         save_npz(train_data, out_path)
         out_path = join(FLAGS.outdir, 'vali_%s.npz' % brdf.name)
         save_npz(vali_data, out_path)
-        '''
 
         # Visualize
         vis_dir = join(FLAGS.outdir, 'vis')

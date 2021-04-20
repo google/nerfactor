@@ -38,8 +38,8 @@ Tips:
 
 If you are using our data, TODO: download instructions
 
-If you are BYOD (bringing your own data), go to [`data_gen/`](./data_gen) to either render your own synthetic data or
-process your real captures.
+If you are BYOD (bringing your own data), go to [`data_gen/`](./data_gen) to
+either render your own synthetic data or process your real captures.
 
 
 ## Running the Code

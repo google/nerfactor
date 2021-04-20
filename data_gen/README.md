@@ -24,11 +24,13 @@ This folder contains code and instructions for:
 
     REPO_DIR="$repo_dir" "$repo_dir"/data_gen/merl/make_dataset_run.sh "$indir" "$ims" "$outdir"
     ```
+   In this conversion process, the BRDFs are visualized to `$outdir/vis`,
+   in the forms of characteristic clices and renders.
 
 
 ## NeRF: Synthetic Data
 
-TODO
+Go to [`nerf_synth/`](./nerf_synth) and follow the instructions there.
 
 
 ## NeRF: Real Captures

@@ -28,8 +28,6 @@ shift
 PYTHONPATH="$REPO_DIR" \
     python "$REPO_DIR"/data_gen/merl/make_dataset.py \
     --indir="$indir" \
-    --envmap_h='16' \
     --ims="$ims" \
-    --spp='1' \
     --outdir="$outdir" \
     "$@"
