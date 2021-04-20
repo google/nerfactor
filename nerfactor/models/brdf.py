@@ -221,7 +221,7 @@ class Model(BaseModel):
             (2) A video of interpolating between seen identities.
         """
         viewer_http = self.config.get('DEFAULT', 'viewer_prefix')
-        vis_dir = self.config.get('DEFAULT', 'data_root')
+        vis_dir = join(self.config.get('DEFAULT', 'data_root'), 'vis')
         self._validate_mode(mode)
         # Shortcircuit if training
         if mode == 'train':
@@ -251,8 +251,10 @@ class Model(BaseModel):
                     rowtypes_extra = ['image', 'image', 'text', 'text']
                 else:
                     # Seen identities
-                    gt_cslice_path = join(vis_dir, 'vis-cslice_%s.png' % id_)
-                    gt_render_path = join(vis_dir, 'vis-render_%s.png' % id_)
+                    gt_cslice_path = join(
+                        vis_dir, 'cslice_achromatic', id_ + '.png')
+                    gt_render_path = join(
+                        vis_dir, 'render_achromatic', id_ + '.png')
                     row_extra = [
                         pred_cslice_path, pred_render_path, gt_cslice_path,
                         gt_render_path]
@@ -293,8 +295,8 @@ class Model(BaseModel):
             i, w1, mat1_id, w2, mat2_id = id_.split('_')
             i = int(i)
             w1, w2 = float(w1), float(w2)
-            mat1_path = join(vis_dir, 'vis-render_%s.png' % mat1_id)
-            mat2_path = join(vis_dir, 'vis-render_%s.png' % mat2_id)
+            mat1_path = join(vis_dir, 'render_achromatic', mat1_id + '.png')
+            mat2_path = join(vis_dir, 'render_achromatic', mat2_id + '.png')
             pred_path = join(batch_dir, 'render.png')
             mat1 = xm.io.img.load(mat1_path)
             mat2 = xm.io.img.load(mat2_path)
@@ -318,10 +320,10 @@ class Model(BaseModel):
             frame = np.vstack((mat1_labeled, pred, mat2_labeled))
             frames.append(frame)
             frame_ind.append(i)
-        out_webm = outpref + '.webm'
+        outvid = outpref + '.mp4'
         frames_sort = [
             y for (x, y) in sorted(
                 zip(frame_ind, frames), key=lambda pair: pair[0])]
-        ioutil.write_video(frames_sort, out_webm, fps=fps)
-        view_at += '\n\t%s' % (viewer_http + out_webm)
+        xm.vis.video.make_video(frames_sort, outpath=outvid, fps=fps)
+        view_at += '\n\t%s' % (viewer_http + outvid)
         return view_at # to be logged into TensorBoard
