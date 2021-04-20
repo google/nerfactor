@@ -14,20 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [ $# -lt 2 ]; then
-    echo "Usage: $0 merl_dir out_dir[ ...]"
+if [ $# -lt 3 ]; then
+    echo "Usage: $0 merl_dir ims out_dir[ ...]"
     exit 1
 fi
 merl_dir="$1"
-out_dir="$2"
+ims="$2"
+out_dir="$3"
 shift # shift the remaining arguments
+shift
 shift
 
 PYTHONPATH="$REPO_DIR" \
     python make_dataset.py \
     --merl_dir="$merl_dir" \
     --envmap_h='16' \
-    --ims='512' \
+    --ims="$ims" \
     --spp='1' \
     --out_dir="$out_dir" \
     "$@"

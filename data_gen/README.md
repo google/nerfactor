@@ -16,11 +16,13 @@ This folder contains code and instructions for:
 
 1. Start the conversion:
     ```bash
-    repo_dir='/data/vision/billf/intrinsic/sim/code/nerfactor'
-    merl_dir='/data/vision/billf/intrinsic/sim/data/brdf_merl'
-    out_dir='/data/vision/billf/intrinsic/sim/data/brdf_merl_npz/ims512_envmaph16_spp1'
+    proj_root='/data/vision/billf/intrinsic/sim'
+    repo_dir="$proj_root/code/nerfactor"
+    merl_dir="$proj_root/data/brdf_merl"
+    ims='128'
+    out_dir="$proj_root/data/brdf_merl_npz/ims${ims}_envmaph16_spp1"
 
-    REPO_DIR="$repo_dir" "$repo_dir"/data_gen/merl/make_dataset_run.sh "$merl_dir" "$out_dir"
+    REPO_DIR="$repo_dir" "$repo_dir"/data_gen/merl/make_dataset_run.sh "$merl_dir" "$ims" "$out_dir"
     ```
 
 
