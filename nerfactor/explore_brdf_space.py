@@ -58,6 +58,7 @@ def main(_):
     model = Model(config, debug=FLAGS.debug)
     ioutil.restore_model(model, FLAGS.ckpt)
 
+    '''
     # Run inference on all batches
     logger.info("Running inference")
     for batch_i, batch in enumerate(
@@ -77,6 +78,7 @@ def main(_):
 
         # Visualize
         model.vis_batch(to_vis, outdir, mode='test')
+    '''
 
     # Compile all visualized batches into a consolidated view (e.g., an
     # HTML or a video)

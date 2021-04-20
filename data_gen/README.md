@@ -9,20 +9,20 @@ This folder contains code and instructions for:
 
 ## Converting the MERL Binary BRDFs Into a TensorFlow Dataset
 
-1. Go to the correct folder for this task:
+1. Download the MERL BRDF dataset:
     ```bash
-    cd merl
+    wget
     ```
 
-1. Start the conversion:
+1. Convert the dataset into our format:
     ```bash
     proj_root='/data/vision/billf/intrinsic/sim'
     repo_dir="$proj_root/code/nerfactor"
-    merl_dir="$proj_root/data/brdf_merl"
+    indir="$proj_root/data/brdf_merl"
     ims='128'
-    out_dir="$proj_root/data/brdf_merl_npz/ims${ims}_envmaph16_spp1"
+    outdir="$proj_root/data/brdf_merl_npz/ims${ims}_envmaph16_spp1"
 
-    REPO_DIR="$repo_dir" "$repo_dir"/data_gen/merl/make_dataset_run.sh "$merl_dir" "$ims" "$out_dir"
+    REPO_DIR="$repo_dir" "$repo_dir"/data_gen/merl/make_dataset_run.sh "$indir" "$ims" "$outdir"
     ```
 
 

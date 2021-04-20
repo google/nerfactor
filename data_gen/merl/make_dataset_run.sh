@@ -15,21 +15,21 @@
 # limitations under the License.
 
 if [ $# -lt 3 ]; then
-    echo "Usage: $0 merl_dir ims out_dir[ ...]"
+    echo "Usage: $0 indir ims outdir[ ...]"
     exit 1
 fi
-merl_dir="$1"
+indir="$1"
 ims="$2"
-out_dir="$3"
+outdir="$3"
 shift # shift the remaining arguments
 shift
 shift
 
 PYTHONPATH="$REPO_DIR" \
-    python make_dataset.py \
-    --merl_dir="$merl_dir" \
+    python "$REPO_DIR"/data_gen/merl/make_dataset.py \
+    --indir="$indir" \
     --envmap_h='16' \
     --ims="$ims" \
     --spp='1' \
-    --out_dir="$out_dir" \
+    --outdir="$outdir" \
     "$@"
