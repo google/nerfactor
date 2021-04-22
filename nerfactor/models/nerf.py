@@ -102,7 +102,7 @@ class Model(BaseModel):
     def call(self, batch, mode='train'):
         self._validate_mode(mode)
         id_, hw, rayo, rayd, rgb = batch # all flattened
-        pred_coarse, pred_fine = self._render_rays(rayo, rayd)
+        pred_coarse, pred_fine = self._render_rays(rayo, rayd, mode=mode)
         # Prepare values to return
         pred = {
             'coarse': pred_coarse['rgb'],
@@ -146,10 +146,13 @@ class Model(BaseModel):
             tf.concat((z_coarse, z_fine), -1), -1)
         return z_all
 
-    def _render_rays(self, rayo, rayd):
+    def _render_rays(self, rayo, rayd, mode='train'):
         n_samples_coarse = self.config.getint('DEFAULT', 'n_samples_coarse')
         lin_in_disp = self.config.getboolean('DEFAULT', 'lin_in_disp')
-        perturb = self.config.getboolean('DEFAULT', 'perturb')
+        if mode == 'train':
+            perturb = self.config.getboolean('DEFAULT', 'perturb')
+        else: # NOTE: at validation/test time, do not randomize
+            perturb = False
         # Normalize ray directions
         rayd = tf.linalg.l2_normalize(rayd, axis=1)
         # Points in space to evaluate the coarse model at

@@ -175,10 +175,10 @@ def process_view(config, model, batch):
 
 
 def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
-    n_samples_coarse = config.getint('DEFAULT', 'n_samples_coarse')
-    n_samples_fine = config.getint('DEFAULT', 'n_samples_fine')
+    n_samples_coarse = 64 + config.getint('DEFAULT', 'n_samples_coarse')
+    n_samples_fine = 64 + config.getint('DEFAULT', 'n_samples_fine')
     lin_in_disp = config.getboolean('DEFAULT', 'lin_in_disp')
-    perturb = config.getboolean('DEFAULT', 'perturb')
+    perturb = False # NOTE: don't randomize at test time
 
     light_w = 2 * FLAGS.light_h
     lxyz, lareas = gen_light_xyz(FLAGS.light_h, light_w)
@@ -243,10 +243,10 @@ def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
 
 
 def compute_depth_and_normal(model, rayo, rayd, config):
-    n_samples_coarse = config.getint('DEFAULT', 'n_samples_coarse')
-    n_samples_fine = config.getint('DEFAULT', 'n_samples_fine')
+    n_samples_coarse = 64 + config.getint('DEFAULT', 'n_samples_coarse')
+    n_samples_fine = 64 + config.getint('DEFAULT', 'n_samples_fine')
     lin_in_disp = config.getboolean('DEFAULT', 'lin_in_disp')
-    perturb = config.getboolean('DEFAULT', 'perturb')
+    perturb = False # NOTE: do not randomize at test time
     near = config.getfloat('DEFAULT', 'near')
     far = config.getfloat('DEFAULT', 'far')
 
