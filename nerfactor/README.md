@@ -52,7 +52,11 @@ the end of the run.
     repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
-    imh='512'
+    if [[ "$scene" == stonehenge ]]; then
+        imh='256'
+    else
+        imh='512'
+    fi
     if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == stonehenge ]]; then
         near='0.1'; far='2'
     else
