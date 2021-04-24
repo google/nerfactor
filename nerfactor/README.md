@@ -53,7 +53,7 @@ the end of the run.
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
     imh='512'
-    if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
+    if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == stonehenge ]]; then
         near='0.1'; far='2'
     else
         near='2'; far='6'

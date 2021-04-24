@@ -78,22 +78,23 @@ def main(_):
         "poses ({n_poses})").format(n_imgs=n_imgs, n_poses=n_poses)
 
     # Update poses according to downsampling
-    poses[:2, 4, :] = np.array(imgs.shape[:2]).reshape([2, 1])
-    poses[2, 4, :] = poses[2, 4, :] * 1. / factor
+    poses[:2, 4, :] = np.array(
+        imgs.shape[:2]).reshape([2, 1]) # override image size
+    poses[2, 4, :] = poses[2, 4, :] * 1. / factor # scale focal length
 
     # Correct rotation matrix ordering and move variable dim to axis 0
     poses = np.concatenate(
         [poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)
-    poses = np.moveaxis(poses, -1, 0).astype(np.float32)
+    poses = np.moveaxis(poses, -1, 0).astype(np.float32) # Nx3x5
     imgs = np.moveaxis(imgs, -1, 0)
-    bds = np.moveaxis(bds, -1, 0).astype(np.float32)
+    bds = np.moveaxis(bds, -1, 0).astype(np.float32) # Nx2
 
     # Rescale according to a default bd factor
     scale = 1. / (bds.min() * .75)
-    poses[:, :3, 3] *= scale
+    poses[:, :3, 3] *= scale # scale translation
     bds *= scale
 
-    # Recenter poses.
+    # Recenter poses
     poses = _recenter_poses(poses)
 
     # Generate a spiral/spherical ray path for rendering videos

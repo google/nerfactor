@@ -64,9 +64,14 @@ Go to [`nerf_synth/`](./nerf_synth) and follow the instructions there.
     proj_root='/data/vision/billf/intrinsic/sim'
     repo_dir="$proj_root/code/nerfactor"
     scene_dir="$proj_root/data/philip2019multi/$scene"
-    h='512'
+    h='256'
     n_vali='2'
+    if [[ "$scene" == stonehenge ]]; then
+        exclude='0,1,2,3,4,141,142,143,144,145'
+    else
+        exclude=''
+    fi
     outroot="$proj_root/data/philip2019multi_proc/${scene}"
 
-    REPO_DIR="$repo_dir" "$repo_dir/data_gen/philip2019multi_real/make_dataset_run.sh" --scene_dir="$scene_dir" --h="$h" --n_vali="$n_vali" --outroot="$outroot"
+    REPO_DIR="$repo_dir" "$repo_dir/data_gen/philip2019multi_real/make_dataset_run.sh" --scene_dir="$scene_dir" --h="$h" --n_vali="$n_vali" --exclude="$exclude" --outroot="$outroot"
     ```
