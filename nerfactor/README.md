@@ -90,7 +90,7 @@ the end of the run.
     fi
     trained_nerf="$proj_root/output/train/${scene}_nerf/lr$lr"
     occu_thres='0.5'
-    if [[ "$scene" == pinecone* ]]; then
+    if [[ "$scene" == pinecone* || "$scene" == stonehenge ]]; then
         scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'
     elif [[ "$scene" == vasedeck* ]]; then
         scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'
