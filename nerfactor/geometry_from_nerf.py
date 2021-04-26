@@ -223,7 +223,11 @@ def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
         weights = model.accumulate_sigma(sigma, z, surf2l_flat_frontlit)
 
         # Obtain additional samples using importance sampling
+        print("before", z.shape)
         z = model.gen_z_fine(z, weights, n_samples_fine, perturb=perturb)
+        print("after", z.shape)
+        if z.shape[0]==0:
+            from IPython import embed; embed()
         pts = surf_flat_frontlit[:, None, :] + \
             surf2l_flat_frontlit[:, None, :] * z[:, :, None]
         pts_flat = tf.reshape(pts, (-1, 3))
@@ -294,10 +298,12 @@ def compute_depth_and_normal(model, rayo, rayd, config):
         #
         sigma_chunks.append(sigma_chunk)
         normal_chunks.append(normal_chunk)
+    assert sigma_chunks, "No sigma chunk to concat."
     sigma_flat = tf.concat(sigma_chunks, axis=0)
     # Override out-of-bounds sigma to 0
     sigma_flat = tf.tensor_scatter_nd_update(
         sigma_flat, out_ind, tf.zeros((tf.shape(out_ind)[0], 1)))
+    assert normal_chunks, "No normal chunk to concat."
     normal_flat = tf.concat(normal_chunks, axis=0)
     sigma = tf.reshape(sigma_flat, pts.shape[:2]) # (n_rays, n_samples)
     normal = tf.reshape(normal_flat, pts.shape) # (n_rays, n_samples, 3)
@@ -333,6 +339,7 @@ def eval_sigma_mlp(model, pts, use_fine=False):
         pts_chunk = pts_in[i:end_i, :]
         sigma_chunk = tf.nn.relu(sigma_out(enc(embedder(pts_chunk))))
         sigma_chunks.append(sigma_chunk)
+    assert sigma_chunks, "No sigma chunk to concat."
     sigma_in = tf.concat(sigma_chunks, axis=0)
 
     # Assign these predicted sigma to a full zero tensor
@@ -350,6 +357,7 @@ def average_supersamples(map_supersampled, sps):
             sample = map_supersampled[i::sps, j::sps, ...]
             sample = sample[None, ...]
             maps.append(sample)
+    assert maps, "No map to concat."
     maps = tf.concat(maps, axis=0)
     return tf.reduce_mean(maps, axis=0)
 

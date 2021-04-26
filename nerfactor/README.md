@@ -32,44 +32,46 @@ the end of the run.
 1. (Only once for all scenes) Learn data-driven BRDF priors (using a single
    GPU suffices):
     ```bash
+    gpus='0'
+
     # I. Learning BRDF Priors (training and validation)
     proj_root='/data/vision/billf/intrinsic/sim'
     repo_dir="$proj_root/code/nerfactor"
     data_root="$proj_root/data/brdf_merl_npz/ims512_envmaph16_spp1"
     outroot="$proj_root/output/train/merl"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0' --config='brdf.ini' --config_override="data_root=$data_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='brdf.ini' --config_override="data_root=$data_root,outroot=$outroot,viewer_prefix=$viewer_prefix"
 
     # II. Exploring the Learned Space (validation and testing)
     ckpt="$outroot/lr1e-2/checkpoints/ckpt-50"
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/explore_brdf_space_run.sh" '0' --ckpt="$ckpt"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/explore_brdf_space_run.sh" "$gpus" --ckpt="$ckpt"
     ```
 
 1. Train a vanilla NeRF, optionally using multiple GPUs:
     ```bash
     scene='hotdog_2163'
+    gpus='0,1,2,3'
     proj_root='/data/vision/billf/intrinsic/sim'
     repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
-    if [[ "$scene" == SaintFelix || "$scene" == chichen || "$scene" == monastere || "$scene" == montAlban || "$scene" == ruins || "$scene" == russian_church || "$scene" == stonehenge ]]; then
+    if [[ "$scene" == chichen || "$scene" == russian_church || "$scene" == stonehenge ]]; then
         imh='256'
     else
         imh='512'
     fi
-    if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == SaintFelix || "$scene" == chichen || "$scene" == monastere || "$scene" == montAlban || "$scene" == ruins || "$scene" == russian_church || "$scene" == stonehenge ]]; then
+    if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == chichen || "$scene" == russian_church || "$scene" == stonehenge ]]; then
         near='0.1'; far='2'
     else
         near='2'; far='6'
     fi
-    if [[ "$scene" == ficus* || "$scene" == 'hotdog_probe_16-00_latlongmap' ]]; then
+    if [[ "$scene" == ficus* || "$scene" == hotdog_probe_16-00_latlongmap ]]; then
         lr='1e-4'
     else
         lr='5e-4'
     fi
     outroot="$proj_root/output/train/${scene}_nerf"
-
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" '0,1,2,3' --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,lr=$lr,outroot=$outroot,viewer_prefix=$viewer_prefix"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,lr=$lr,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
    Check the quality of this NeRF geometry by inspecting the visualization HTML
    for the alpha and normal maps. You might need to re-run this with another
@@ -78,12 +80,13 @@ the end of the run.
 1. Compute geometry buffers for all views by querying the trained NeRF:
     ```bash
     scene='hotdog_2163'
+    gpus='0'
     proj_root='/data/vision/billf/intrinsic/sim'
     repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
     imh='512'
-    if [[ "$scene" == ficus* || "$scene" == 'hotdog_probe_16-00_latlongmap' ]]; then
+    if [[ "$scene" == ficus* || "$scene" == hotdog_probe_16-00_latlongmap ]]; then
         lr='1e-4'
     else
         lr='5e-4'
@@ -99,8 +102,7 @@ the end of the run.
     fi
     out_root="$proj_root/output/surf/$scene"
     mlp_chunk='375000' # bump this up until GPU gets OOM for faster computation
-
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/geometry_from_nerf_run.sh" '0' --data_root="$data_root" --trained_nerf="$trained_nerf" --out_root="$out_root" --imh="$imh" --scene_bbox="$scene_bbox" --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/geometry_from_nerf_run.sh" "$gpus" --data_root="$data_root" --trained_nerf="$trained_nerf" --out_root="$out_root" --imh="$imh" --scene_bbox="$scene_bbox" --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
     ```
 
 
