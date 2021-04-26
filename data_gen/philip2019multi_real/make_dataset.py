@@ -41,7 +41,10 @@ def main(_):
 
     # ------ Training and validation
 
-    exclude = [int(x) for x in FLAGS.exclude.split(',')]
+    if FLAGS.exclude == '':
+        exclude = []
+    else:
+        exclude = [int(x) for x in FLAGS.exclude.split(',')]
 
     # Load poses
     bundle_path = join(FLAGS.scene_dir, 'cameras', 'bundle.out')
@@ -50,7 +53,8 @@ def main(_):
 
     # Load and resize images, and then convert their corresponding poses
     img_dir = join(FLAGS.scene_dir, 'images')
-    img_paths = xm.os.sortglob(img_dir, filename='*', ext='png')
+    img_paths = xm.os.sortglob(
+        img_dir, filename='*', ext=('jpg', 'jpeg', 'png'), ext_ignore_case=True)
     img_paths = [x for i, x in enumerate(img_paths) if i not in exclude]
     assert img_paths, "No image globbed"
     if FLAGS.debug:

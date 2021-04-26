@@ -55,7 +55,8 @@ Go to [`nerf_synth/`](./nerf_synth) and follow the instructions there.
 ## Philip et al. 2019: Real Captures
 
 1. Download a real capture from
-   [here](https://repo-sam.inria.fr/fungraph/deep-relighting/index.html).
+   [here](https://repo-sam.inria.fr/fungraph/deep-relighting/index.html)
+   and unzip it to `$proj_root/data/philip2019multi/$scene`.
 
 1. Convert these real images and [Bundler](https://github.com/snavely/bundler_sfm#output-format)
    poses into our format:
