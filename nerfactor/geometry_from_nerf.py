@@ -222,9 +222,6 @@ def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
         pts = surf_flat_frontlit[:, None, :] + \
             surf2l_flat_frontlit[:, None, :] * z[:, :, None]
         pts_flat = tf.reshape(pts, (-1, 3))
-        if pts_flat.shape[0]==0:
-            print(0)
-            from IPython import embed; embed()
         sigma_flat = eval_sigma_mlp(model, pts_flat, use_fine=False)
         sigma = tf.reshape(sigma_flat, pts.shape[:2])
         weights = model.accumulate_sigma(sigma, z, surf2l_flat_frontlit)
@@ -236,9 +233,6 @@ def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
         pts_flat = tf.reshape(pts, (-1, 3))
 
         # Evaluate all samples with the fine model
-        if pts_flat.shape[0]==0:
-            print(1)
-            from IPython import embed; embed()
         sigma_flat = eval_sigma_mlp(model, pts_flat, use_fine=True)
         sigma = tf.reshape(sigma_flat, pts.shape[:2])
         weights = model.accumulate_sigma(sigma, z, surf2l_flat_frontlit)
