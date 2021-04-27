@@ -85,7 +85,11 @@ the end of the run.
     repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
-    imh='512'
+    if [[ "$scene" == chichen || "$scene" == russian_church || "$scene" == stonehenge ]]; then
+        imh='256'
+    else
+        imh='512'
+    fi
     if [[ "$scene" == ficus* || "$scene" == hotdog_probe_16-00_latlongmap ]]; then
         lr='1e-4'
     else
@@ -93,7 +97,7 @@ the end of the run.
     fi
     trained_nerf="$proj_root/output/train/${scene}_nerf/lr$lr"
     occu_thres='0.5'
-    if [[ "$scene" == pinecone* || "$scene" == stonehenge ]]; then
+    if [[ "$scene" == pinecone* || "$scene" == stonehenge || "$scene" == chichen || "$scene" == russian_church ]]; then
         scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'
     elif [[ "$scene" == vasedeck* ]]; then
         scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'

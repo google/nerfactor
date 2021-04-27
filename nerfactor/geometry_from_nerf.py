@@ -204,6 +204,10 @@ def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
         # Save memory by ignoring back-lit points
         lcos = tf.einsum('ijk,ik->ij', surf2l, normal)
         front_lit = lcos > 0 # (n_surf_pts, lpix_chunk)
+        if tf.reduce_sum(tf.cast(front_lit, float)) == 0:
+            # If there is no point being front lit, this visibility buffer is
+            # zero everywhere, so no need to update this slice
+            continue
         front_lit_flat = tf.reshape(
             front_lit, (-1,)) # (n_surf_pts * lpix_chunk)
         surf_flat_frontlit = tf.boolean_mask(surf_flat, front_lit_flat, axis=0)
@@ -218,21 +222,23 @@ def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
         pts = surf_flat_frontlit[:, None, :] + \
             surf2l_flat_frontlit[:, None, :] * z[:, :, None]
         pts_flat = tf.reshape(pts, (-1, 3))
+        if pts_flat.shape[0]==0:
+            print(0)
+            from IPython import embed; embed()
         sigma_flat = eval_sigma_mlp(model, pts_flat, use_fine=False)
         sigma = tf.reshape(sigma_flat, pts.shape[:2])
         weights = model.accumulate_sigma(sigma, z, surf2l_flat_frontlit)
 
         # Obtain additional samples using importance sampling
-        print("before", z.shape)
         z = model.gen_z_fine(z, weights, n_samples_fine, perturb=perturb)
-        print("after", z.shape)
-        if z.shape[0]==0:
-            from IPython import embed; embed()
         pts = surf_flat_frontlit[:, None, :] + \
             surf2l_flat_frontlit[:, None, :] * z[:, :, None]
         pts_flat = tf.reshape(pts, (-1, 3))
 
         # Evaluate all samples with the fine model
+        if pts_flat.shape[0]==0:
+            print(1)
+            from IPython import embed; embed()
         sigma_flat = eval_sigma_mlp(model, pts_flat, use_fine=True)
         sigma = tf.reshape(sigma_flat, pts.shape[:2])
         weights = model.accumulate_sigma(sigma, z, surf2l_flat_frontlit)
