@@ -118,6 +118,7 @@ relighting and view synthesis results (testing):
 ```bash
 scene='hotdog_2163'
 gpus='0,1,2,3'
+overwrite='True'
 proj_root='/data/vision/billf/intrinsic/sim'
 repo_dir="$proj_root/code/nerfactor"
 viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
@@ -132,14 +133,14 @@ else
 fi
 surf_root="$proj_root/output/surf/$scene"
 shape_outdir="$proj_root/output/train/${scene}_shape"
-REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='shape.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix"
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='shape.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # II. Joint Optimization (training and validation)
 shape_ckpt="$shape_outdir/lr1e-2/checkpoints/ckpt-2"
 brdf_ckpt="$proj_root/output/train/merl/lr1e-2/checkpoints/ckpt-50"
 test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
 outroot="$proj_root/output/train/${scene}_nerfactor"
-REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix"
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # III. Simultaneous Relighting and View Synthesis (testing)
 ckpt="$outroot/lr1e-3/checkpoints/ckpt-10"
