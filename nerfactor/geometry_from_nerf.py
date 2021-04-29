@@ -84,10 +84,11 @@ def main(_):
 
         # Process all views of this mode
         for batch in tqdm(datapipe, desc=f"Views ({mode})", total=n_views):
-            process_view(config, model, batch)
+            if batch[0][0].numpy().decode() in ('train_000', 'train_160'):
+                process_view(config, model, batch)
 
             if FLAGS.debug:
-                return
+                continue
 
 
 def process_view(config, model, batch):
