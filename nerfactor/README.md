@@ -96,12 +96,14 @@ the end of the run.
         lr='5e-4'
     fi
     trained_nerf="$proj_root/output/train/${scene}_nerf/lr$lr"
-    occu_thres='0.5'
-    if [[ "$scene" == pinecone* || "$scene" == stonehenge || "$scene" == russian_church ]]; then
+    if [[ "$scene" == pinecone* || "$scene" == stonehenge ]]; then
+        occu_thres='0.5'
         scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'
     elif [[ "$scene" == chichen ]]; then
-        scene_bbox='-0.7,0.7,-0.7,0.7,-0.7,0.7'
+        occu_thres='0.9'
+        scene_bbox='-0.5,0.5,-0.5,0.5,-0.5,0.5'
     elif [[ "$scene" == vasedeck* ]]; then
+        occu_thres='0.5'
         scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'
     else
         scene_bbox=''
