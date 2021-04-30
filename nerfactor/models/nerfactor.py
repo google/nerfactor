@@ -550,7 +550,7 @@ class Model(ShapeModel):
 
     def vis_batch(
             self, data_dict, outdir, mode='train', dump_raw_to=None,
-            light_vis_h=256, olat_vis=False):
+            light_vis_h=256, olat_vis=False, alpha_thres=0.8):
         # Visualize estimated lighting
         if mode == 'vali':
             # The same for all batches/views, so do it just once
@@ -606,6 +606,7 @@ class Model(ShapeModel):
         # Write images
         img_dict = {}
         alpha = data_dict['gt_alpha']
+        alpha[alpha < alpha_thres] = 0 # stricter compositing
         for k, v in data_dict.items():
             # OLAT-relit RGB
             if k == 'pred_rgb_olat': # HxWxLx3
@@ -816,12 +817,14 @@ class Model(ShapeModel):
             normal = xm.io.img.load(path_dict['normal'])
             rgb = xm.io.img.load(path_dict['rgb'])
             brdf = xm.io.img.load(path_dict['brdf'])
+            hw = rgb.shape[:2]
             # Optionally, embed the light used to right bottom corner of render
             if light is not None:
                 imgutil.frame_image(light, rgb=(1, 1, 1), width=1)
+                light_vis_h = int(32 / 256 * hw[0]) # scale light probe size
+                light = xm.img.resize(light, new_h=light_vis_h)
                 rgb[:light.shape[0], -light.shape[1]:] = light
             # Put labels
-            hw = rgb.shape[:2]
             put_text_kwargs = {
                 'label_top_left_xy': (
                     int(self.put_text_param['text_loc_ratio'] * hw[1]),
@@ -885,6 +888,7 @@ class Model(ShapeModel):
         envmap_names = list(self.novel_probes.keys())
         n_envmaps = len(envmap_names)
         batch_dirs_roundtrip = list(reversed(batch_dirs)) + batch_dirs
+        batch_dirs_roundtrip += batch_dirs_roundtrip # 2nd roundtrip
         n_views_per_envmap = len(batch_dirs_roundtrip) / n_envmaps # float
         map_i = 0
         for view_i, batch_dir in enumerate(
