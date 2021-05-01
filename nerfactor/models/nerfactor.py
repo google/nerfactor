@@ -812,6 +812,7 @@ class Model(ShapeModel):
 
         def make_frame(path_dict, light=None, task='viewsyn'):
             # Load predictions
+            nn = xm.io.img.load(path_dict['nn'])
             albedo = xm.io.img.load(path_dict['albedo'])
             lvis = xm.io.img.load(path_dict['lvis'])
             normal = xm.io.img.load(path_dict['normal'])
@@ -833,6 +834,7 @@ class Model(ShapeModel):
                     self.put_text_param['text_size_ratio'] * hw[0]),
                 'font_color': (0, 0, 0) if self.white_bg else (1, 1, 1),
                 'font_ttf': self.put_text_param['font_path']}
+            nn = xm.vis.text.put_text(nn, "Nearest Input", **put_text_kwargs)
             albedo = xm.vis.text.put_text(albedo, "Albedo", **put_text_kwargs)
             lvis_label = "Light Visibility"
             if task in ('viewsyn', 'simul'):
@@ -842,15 +844,24 @@ class Model(ShapeModel):
             rgb = xm.vis.text.put_text(rgb, "Rendering", **put_text_kwargs)
             brdf = xm.vis.text.put_text(brdf, "BRDF", **put_text_kwargs)
             # Make collage
-            frame_top = imgutil.hconcat((normal, lvis, brdf))
-            frame_bottom = imgutil.hconcat((albedo, rgb))
+            frame_top = imgutil.hconcat((normal, lvis, nn))
+            frame_bottom = imgutil.hconcat((brdf, albedo, rgb))
             frame = imgutil.vconcat((frame_top, frame_bottom))
             return frame
+
+        def get_nearest_input(batch_dir):
+            metadata_path = join(batch_dir, 'metadata.json')
+            metadata = ioutil.read_json(metadata_path)
+            id_ = metadata['id']
+            data_root = self.config.get('DEFAULT', 'data_root')
+            nearest_input_path = join(data_root, id_, 'nn.png')
+            return nearest_input_path
 
         # ------ View synthesis
         frames = []
         for batch_dir in tqdm(batch_dirs, desc="View Synthesis"):
             paths = {
+                'nn': get_nearest_input(batch_dir),
                 'albedo': join(batch_dir, 'pred_albedo.png'),
                 'lvis': join(batch_dir, 'pred_lvis.png'), # mean
                 'normal': join(batch_dir, 'pred_normal.png'),
@@ -872,6 +883,7 @@ class Model(ShapeModel):
                 continue
             rgb_path = join(relight_view_dir, 'pred_rgb_olat_%s.png' % olat_id)
             paths = {
+                'nn': get_nearest_input(relight_view_dir),
                 'albedo': join(relight_view_dir, 'pred_albedo.png'),
                 'lvis': lvis_path, # per-light
                 'normal': join(relight_view_dir, 'pred_normal.png'),
@@ -896,6 +908,7 @@ class Model(ShapeModel):
             envmap_name = envmap_names[map_i]
             rgb_path = join(batch_dir, 'pred_rgb_probes_%s.png' % envmap_name)
             paths = {
+                'nn': get_nearest_input(batch_dir),
                 'albedo': join(batch_dir, 'pred_albedo.png'),
                 'lvis': join(batch_dir, 'pred_lvis.png'), # mean
                 'normal': join(batch_dir, 'pred_normal.png'),

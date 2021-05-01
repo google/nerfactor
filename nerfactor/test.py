@@ -126,11 +126,12 @@ def main(_):
         tgt_brdf_z = (1.6404238, -0.172426, -0.5986401) # aluminium
         brdf_z_override = tf.convert_to_tensor(tgt_brdf_z, dtype=tf.float32)
 
-    # Run inference on all batches
+    # For all test views
     logger.info("Running inference")
     for batch_i, batch in enumerate(
             tqdm(datapipe, desc="Inferring Views", total=n_views)):
         relight_olat = batch_i == n_views - 1 # only for the final view
+        # Inference
         _, _, _, to_vis = model.call(
             batch, mode='test', relight_olat=relight_olat, relight_probes=True,
             albedo_scales=albedo_scales, albedo_override=albedo_override,
@@ -138,6 +139,9 @@ def main(_):
         # Visualize
         outdir = join(outroot, 'batch{i:09d}'.format(i=batch_i))
         model.vis_batch(to_vis, outdir, mode='test', olat_vis=relight_olat)
+        # Break if debugging
+        if FLAGS.debug:
+            break
 
     # Compile all visualized batches into a consolidated view (e.g., an
     # HTML or a video)

@@ -33,7 +33,6 @@ the end of the run.
    GPU suffices):
     ```bash
     gpus='0'
-    set -e
 
     # I. Learning BRDF Priors (training and validation)
     proj_root='/data/vision/billf/intrinsic/sim'
@@ -124,7 +123,6 @@ relighting and view synthesis results (testing):
 scene='hotdog_2163'
 gpus='0,1,2,3'
 overwrite='True'
-set -e
 proj_root='/data/vision/billf/intrinsic/sim'
 repo_dir="$proj_root/code/nerfactor"
 viewer_prefix='http://vision38.csail.mit.edu' # or just use ''

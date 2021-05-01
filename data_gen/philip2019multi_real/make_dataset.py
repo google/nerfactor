@@ -183,6 +183,12 @@ def main(_):
         frame_meta = {
             'file_path': '', 'rotation': 0, 'transform_matrix': c2w.tolist()}
         test_meta['frames'].append(frame_meta)
+        # Write the nearest input to this test view folder
+        dist = np.linalg.norm(pose[:, 3] - poses[:, :, 3], axis=1)
+        nn_i = np.argmin(dist)
+        nn_img = imgs[nn_i, :, :, :]
+        xm.io.img.write_float(
+            nn_img, join(FLAGS.outroot, view_folder_, 'nn.png'), clip=True)
         # Write this frame's metadata to the view folder
         frame_meta = {
             'cam_angle_x': cam_angle_x,

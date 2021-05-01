@@ -51,7 +51,7 @@ class Model(BaseModel):
         self.lxyz = tf.convert_to_tensor(lxyz, dtype=tf.float32)
         #
         self.put_text_param = {
-            'text_loc_ratio': 0.05, 'text_size_ratio': 0.05,
+            'text_loc_ratio': 0.05, 'text_size_ratio': 0.07,
             'font_path': xm.const.Path.open_sans_regular}
 
     def _init_net(self):
