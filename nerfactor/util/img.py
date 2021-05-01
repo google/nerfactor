@@ -16,9 +16,12 @@
 
 import numpy as np
 from PIL import Image
-
-import tensorflow as tf
-tf.compat.v1.enable_eager_execution()
+try:
+    import tensorflow as tf
+except ModuleNotFoundError:
+    print((
+        "Failed to import TensorFlow, but this may be OK depending on "
+        "which function you use"))
 
 from . import logging as logutil
 
@@ -228,9 +231,17 @@ def vconcat(img_list, out_h=None):
 
 
 def frame_image(img, rgb=None, width=4):
+    img_dtype_str = str(img.dtype)
+    if img_dtype_str.startswith('float'):
+        dtype_max = 1.
+    elif img_dtype_str.startswith('uint'):
+        dtype_max = np.iinfo(img.dtype).max
+    else:
+        raise NotImplementedError(img_dtype_str)
+
     if rgb is None:
         rgb = (0, 0, 1)
-    rgb = np.array(rgb, dtype=img.dtype) * np.iinfo(img.dtype).max
+    rgb = np.array(rgb, dtype=img.dtype) * dtype_max
 
     img[:width, :, :] = rgb
     img[-width:, :, :] = rgb

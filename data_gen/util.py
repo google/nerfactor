@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from io import BytesIO
+from os.path import basename
 import numpy as np
 import cv2
+from third_party.xiuminglib import xiuminglib as xm
 
 
 def generate_spherical_poses(poses):
@@ -194,3 +196,23 @@ def read_exr(path):
     if bgr.ndim != 3 or bgr.shape[2] != 3:
         raise NotImplementedError(bgr.shape)
     return bgr[:, :, ::-1]
+
+
+def read_light(path):
+    ext = basename(path).split('.')[-1]
+    if ext == 'exr':
+        light = read_exr(path)
+        arr = np.dstack((light['R'], light['G'], light['B']))
+    elif ext == 'hdr':
+        arr = xm.io.hdr.read(path)
+    else:
+        raise NotImplementedError(ext)
+    return arr
+
+
+def listify_matrix(mat):
+    elements = []
+    for row in mat:
+        for x in row:
+            elements.append(x)
+    return elements

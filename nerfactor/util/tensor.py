@@ -15,7 +15,6 @@
 # pylint: disable=relative-beyond-top-level
 
 import tensorflow as tf
-tf.compat.v1.enable_eager_execution()
 
 from . import logging as logutil
 

@@ -1,19 +1,9 @@
 # NeRFactor: Rendering NeRF-Like Data
 
-TODO
 This folder provides the code for rendering your own data. You do not need this
-if you use our rendered data (available in "Downloads -> Rendered Data" of
-[the project page](http://nlt.csail.mit.edu)).
+if you use our data available [here](https://github.com/google/nerfactor#data).
 
-`render.py` is the core script that renders a given camera-light configuration.
-`gen_render_params_expects.py` generates parameters that define different
-camera-light configurations (arguments to `render.py`), for you to distribute
-`render.py` over multiple machines or a render farm to render all
-configurations in parallel. `get_neighbors.py` is the script that generated the
-JSON files indicating the nearest neighbor for each camera/light in the metadata
-.zip.
-
-Scenes are specified in Blender and rendered with Cycles, Blender's built-in
+The scenes need to be specified in Blender. We use Cycles, Blender's built-in
 physically-based rendering engine.
 
 
@@ -52,6 +42,12 @@ Blender 2.8x. More specifically, we used Blender 2.83.4.
 
 ## Rendering
 
+The following code block renders a scene lit by a given light probe from
+multiple views. Besides the regular RGB images, it also renders other buffers
+including albedo and surface normals. In addition, it renders several novel
+lighting conditions including all light probes bundled in Blender and several
+OLAT conditions; those renders serve as the relighting ground truth.
+
 ```bash
 scene='hotdog'
 light='2188'
@@ -67,7 +63,7 @@ outdir="$proj_root/data/render_outdoor_inten${light_inten}_gi/${scene}_${light}"
 REPO_DIR="$repo_dir" BLENDER_BIN="$blender_bin" "$repo_dir/data_gen/nerf_synth/render_run.sh" --scene_path="$scene_path" --light_path="$light_path" --cam_dir="$cam_dir" --test_light_dir="$test_light_dir" --light_inten="$light_inten" --outdir="$outdir"
 ```
 
-We modify our parallel rendering code to this current version that renders all
+We modified our parallel rendering code to this current version that renders all
 views sequentially for portability. If you have a cluster, consider distributing
 all views across the cluster to render them in parallel. The heavylifting
 function to be distributed is `render_view()` in `render.py`.

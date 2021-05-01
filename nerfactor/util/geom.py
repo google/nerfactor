@@ -17,9 +17,7 @@
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 from scipy.spatial.qhull import QhullError
-
 import tensorflow as tf
-tf.compat.v1.enable_eager_execution()
 
 from . import math as mathutil
 
