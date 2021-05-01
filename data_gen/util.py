@@ -14,6 +14,7 @@
 
 from io import BytesIO
 import numpy as np
+import cv2
 
 
 def generate_spherical_poses(poses):
@@ -185,3 +186,11 @@ def save_npz(dict_, path):
         io_buffer = BytesIO()
         np.savez(io_buffer, **dict_)
         h.write(io_buffer.getvalue())
+
+
+def read_exr(path):
+    bgr = cv2.imread(path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+    assert bgr is not None, "Loading failed"
+    if bgr.ndim != 3 or bgr.shape[2] != 3:
+        raise NotImplementedError(bgr.shape)
+    return bgr[:, :, ::-1]

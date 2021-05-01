@@ -66,3 +66,8 @@ light_inten='3'
 outdir="$proj_root/data/render_outdoor_inten${light_inten}_gi/${scene}_${light}"
 REPO_DIR="$repo_dir" BLENDER_BIN="$blender_bin" "$repo_dir/data_gen/nerf_synth/render_run.sh" --scene_path="$scene_path" --light_path="$light_path" --cam_dir="$cam_dir" --test_light_dir="$test_light_dir" --light_inten="$light_inten" --outdir="$outdir"
 ```
+
+We modify our parallel rendering code to this current version that renders all
+views sequentially for portability. If you have a cluster, consider distributing
+all views across the cluster to render them in parallel. The heavylifting
+function to be distributed is `render_view()` in `render.py`.
