@@ -30,6 +30,10 @@ This folder contains code and instructions for:
 
 ## NeRF: Synthetic Data
 
+This section is relevant only if you want to render your own data, e.g., using
+your own scene or light probe. If our data suffice for your purpose already, it
+is much easier to just [download our data](../#data).
+
 Go to [`nerf_synth/`](./nerf_synth) and follow the instructions there.
 
 
