@@ -32,12 +32,20 @@ This folder contains code and instructions for:
 
 This section is relevant only if you want to render your own data, e.g., using
 your own scene or light probe. If our data suffice for your purpose already, it
-is much easier to just [download our data](../#data).
+is much easier to just
+[download our rendering](https://github.com/google/nerfactor#data)
+and skip the following instructions.
 
 Go to [`nerf_synth/`](./nerf_synth) and follow the instructions there.
 
 
 ## NeRF: Real Captures
+
+This section is relevant only if you want to process your own capture. If our
+processed version of the NeRF 360-degree real captures already suffices for
+your purpose, it is much easier to just
+[download our processed version](https://github.com/google/nerfactor#data)
+and skip the following instructions.
 
 1. Download the 360-degree real captures by NeRF from
    [here](https://drive.google.com/file/d/1jzggQ7IPaJJTKx9yLASWHrX8dXHnG5eB/view?usp=sharing).
@@ -57,6 +65,12 @@ Go to [`nerf_synth/`](./nerf_synth) and follow the instructions there.
 
 
 ## Philip et al. 2019: Real Captures
+
+This section is relevant only if you want to process your own capture. If our
+processed version of Philip et al.'s data already suffices for
+your purpose, it is much easier to just
+[download our processed version](https://github.com/google/nerfactor#data)
+and skip the following instructions.
 
 1. Download a real capture from
    [here](https://repo-sam.inria.fr/fungraph/deep-relighting/index.html)
