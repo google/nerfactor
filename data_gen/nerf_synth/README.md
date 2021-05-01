@@ -30,13 +30,11 @@ Blender 2.8x. More specifically, we used Blender 2.83.4.
     ```bash
     proj_root='/data/vision/billf/intrinsic/sim'
     repo_dir="$proj_root/code/nerfactor"
-
+    # Make directory
     mkdir "$proj_root"/software
     cd "$proj_root"/software
-
     # Download
     wget https://download.blender.org/release/Blender2.83/blender-2.83.4-linux64.tar.xz
-
     # Unzip the pre-built binaries
     tar -xvf blender-2.83.4-linux64.tar.xz
     ```
@@ -44,11 +42,9 @@ Blender 2.8x. More specifically, we used Blender 2.83.4.
 1. Install the dependencies to this *Blender-bundled* Python:
     ```bash
     cd blender-2.83.4-linux64/2.83/python/bin
-
     # Install pip for THIS Blender-bundled Python
     curl https://bootstrap.pypa.io/get-pip.py | ./python3.7m
-    # If errors, make sure you deactivate your Conda environment
-
+    # If the above fails, make sure you deactivate your Conda environment
     # Use THIS pip to install other dependencies
     ./pip install absl-py tqdm ipython numpy Pillow opencv-python
     ```
@@ -57,10 +53,16 @@ Blender 2.8x. More specifically, we used Blender 2.83.4.
 ## Rendering
 
 ```bash
+scene='hotdog'
+light='2188'
 proj_root='/data/vision/billf/intrinsic/sim'
+blender_bin="$proj_root/software/blender-2.83.4-linux64/blender"
 repo_dir="$proj_root/code/nerfactor"
-REPO_DIR="$repo_dir" \
-    BLENDER_BIN="$proj_root/software/blender-2.83.4-linux64/blender" \
-    "$repo_dir/data_gen/nerf_synth/render_run.sh" \
-    "$@"
+scene_path="$proj_root/data/scenes/$scene.blend"
+light_path="$proj_root/data/envmaps/for-render_h16/train/$light.hdr"
+cam_dir="$proj_root/data/cams/nerf"
+test_light_dir="$proj_root/data/envmaps/for-render_h16/test"
+light_inten='3'
+outdir="$proj_root/data/render_outdoor_inten${light_inten}_gi/${scene}_${light}"
+REPO_DIR="$repo_dir" BLENDER_BIN="$blender_bin" "$repo_dir/data_gen/nerf_synth/render_run.sh" --scene_path="$scene_path" --light_path="$light_path" --cam_dir="$cam_dir" --test_light_dir="$test_light_dir" --light_inten="$light_inten" --outdir="$outdir"
 ```
