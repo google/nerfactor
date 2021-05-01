@@ -21,7 +21,6 @@ This folder contains code and instructions for:
     indir="$proj_root/data/brdf_merl"
     ims='256'
     outdir="$proj_root/data/brdf_merl_npz/ims${ims}_envmaph16_spp1"
-
     REPO_DIR="$repo_dir" "$repo_dir"/data_gen/merl/make_dataset_run.sh "$indir" "$ims" "$outdir"
     ```
    In this conversion process, the BRDFs are visualized to `$outdir/vis`,
@@ -59,7 +58,6 @@ and skip the following instructions.
     h='512'
     n_vali='2'
     outroot="$proj_root/data/nerf_real_360_proc/${scene}"
-
     REPO_DIR="$repo_dir" "$repo_dir/data_gen/nerf_real/make_dataset_run.sh" --scene_dir="$scene_dir" --h="$h" --n_vali="$n_vali" --outroot="$outroot"
     ```
 
@@ -91,6 +89,5 @@ and skip the following instructions.
         exclude=''
     fi
     outroot="$proj_root/data/philip2019multi_proc/${scene}"
-
     REPO_DIR="$repo_dir" "$repo_dir/data_gen/philip2019multi_real/make_dataset_run.sh" --scene_dir="$scene_dir" --h="$h" --n_vali="$n_vali" --exclude="$exclude" --outroot="$outroot"
     ```
