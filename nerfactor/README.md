@@ -176,3 +176,48 @@ under novel lighting conditions.
   with this flag on, `trainvali.py` will NOT decorate the main training step
   with `@tf.function` (easier) and only load a single datapoint each epoch
   (faster).
+
+
+## Ablation Studies
+
+This section is relevant only if you are interested in reproducing the ablation
+studies presented in the paper.
+
+"NeRFactor w/o Learned BRDFs" replaces the MERL BRDF MLP with an analytic
+microfacet BRDF model, so it does not predict BRDF latent codes, but rather
+the roughness parameters:
+```bash
+scene='hotdog_2163'
+gpus='0,1,2,3'
+overwrite='True'
+proj_root='/data/vision/billf/intrinsic/sim'
+repo_dir="$proj_root/code/nerfactor"
+viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
+
+# II. Joint Optimization (training and validation)
+data_root="$proj_root/data/selected/$scene"
+imh='512'
+if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == chichen || "$scene" == stonehenge ]]; then
+    near='0.1'; far='2'; use_nerf_alpha=true
+else
+    near='2'; far='6'; use_nerf_alpha=false
+fi
+surf_root="$proj_root/output/surf/$scene"
+shape_ckpt="$proj_root/output/train/${scene}_shape/lr1e-2/checkpoints/ckpt-2"
+#if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
+#    xyz_jitter_std=0.0075
+#else
+xyz_jitter_std=0.01
+#fi
+test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
+outroot="$proj_root/output/train/${scene}_nerfactor"
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerfactor_microfacet.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
+
+# III. Simultaneous Relighting and View Synthesis (testing)
+ckpt="$outroot/lr1e-3/checkpoints/ckpt-10"
+if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == chichen || "$scene" == stonehenge ]]; then
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt"
+else
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt" --color_correct_albedo
+fi
+```
