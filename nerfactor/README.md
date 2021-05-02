@@ -210,7 +210,7 @@ shape_ckpt="$proj_root/output/train/${scene}_shape/lr1e-2/checkpoints/ckpt-2"
 xyz_jitter_std=0.01
 #fi
 test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
-outroot="$proj_root/output/train/${scene}_nerfactor"
+outroot="$proj_root/output/train/${scene}_nerfactor_microfacet"
 REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerfactor_microfacet.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # III. Simultaneous Relighting and View Synthesis (testing)

@@ -21,5 +21,4 @@ PYTHONPATH="$REPO_DIR" \
     --python "$REPO_DIR/data_gen/nerf_synth/render.py" \
     --python-use-system-env \
     -- \
-    "$@" \
-    1> /dev/null # to silence Blender's printing during rendering
+    "$@"

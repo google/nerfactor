@@ -201,8 +201,7 @@ def read_exr(path):
 def read_light(path):
     ext = basename(path).split('.')[-1]
     if ext == 'exr':
-        light = read_exr(path)
-        arr = np.dstack((light['R'], light['G'], light['B']))
+        arr = read_exr(path)
     elif ext == 'hdr':
         arr = xm.io.hdr.read(path)
     else:
