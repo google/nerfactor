@@ -21,4 +21,4 @@ set -e
     --python-use-system-env \
     -- \
     "$@" \
-    1> nul # to silence Blender's printing during rendering
+    1> /dev/null # to silence Blender's printing during rendering
