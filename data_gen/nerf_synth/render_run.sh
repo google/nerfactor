@@ -20,4 +20,5 @@ set -e
     --python "$REPO_DIR/data_gen/nerf_synth/render.py" \
     --python-use-system-env \
     -- \
-    "$@"
+    "$@" \
+    1> nul # to silence Blender's printing during rendering
