@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-from os.path import join, basename
+from os.path import join, basename, exists
 import numpy as np
 from absl import app, flags
 from tqdm import tqdm
@@ -60,7 +60,7 @@ def main(_):
         xm.io.json.write(data, json_path)
 
         # Render each frame
-        for i, frame in enumerate(tqdm(frames, desc="Views")):
+        for i, frame in enumerate(tqdm(frames, desc=f"Views ({mode})")):
             cam_transform_mat = frame['transform_matrix']
             folder = f'{mode}_{i:03d}'
             outdir = join(FLAGS.outdir, folder)
@@ -112,14 +112,16 @@ def render_view(cam_transform_mat, cam_angle_x, outdir):
 
     # Dump metadata
     metadata_json = join(outdir, 'metadata.json')
-    cam_transform_mat_str = ','.join(
-        str(x) for x in listify_matrix(cam_transform_mat))
-    data = {
-        'scene': basename(FLAGS.scene_path),
-        'cam_transform_mat': cam_transform_mat_str, 'cam_angle_x': cam_angle_x,
-        'envmap': basename(FLAGS.light_path), 'envmap_inten': FLAGS.light_inten,
-        'imh': FLAGS.res, 'imw': FLAGS.res, 'spp': FLAGS.spp}
-    xm.io.json.write(data, metadata_json)
+    if not exists(metadata_json):
+        cam_transform_mat_str = ','.join(
+            str(x) for x in listify_matrix(cam_transform_mat))
+        data = {
+            'scene': basename(FLAGS.scene_path),
+            'cam_transform_mat': cam_transform_mat_str,
+            'cam_angle_x': cam_angle_x, 'envmap': basename(FLAGS.light_path),
+            'envmap_inten': FLAGS.light_inten, 'imh': FLAGS.res,
+            'imw': FLAGS.res, 'spp': FLAGS.spp}
+        xm.io.json.write(data, metadata_json)
 
     # Open scene
     xm.blender.scene.open_blend(FLAGS.scene_path)
@@ -169,7 +171,8 @@ def render_view(cam_transform_mat, cam_angle_x, outdir):
 
     # Render RGBA
     rgba_png = join(outdir, 'rgba.png')
-    xm.blender.render.render(rgba_png, cam=cam_obj)
+    if not exists(rgba_png):
+        xm.blender.render.render(rgba_png, cam=cam_obj)
     rgba = xm.io.img.read(rgba_png)
     alpha = rgba[:, :, 3]
     alpha = xm.img.normalize_uint(alpha)
@@ -183,12 +186,17 @@ def render_view(cam_transform_mat, cam_angle_x, outdir):
         # With HDR maps
         for envmap_path in xm.os.sortglob(FLAGS.test_light_dir, '*.hdr'):
             envmap_name = basename(envmap_path).split('.')[0]
-            xm.blender.light.add_light_env(env=envmap_path, strength=1.)
             outpath = join(outdir, 'rgba_%s.png' % envmap_name)
+            if exists(outpath):
+                continue
+            xm.blender.light.add_light_env(env=envmap_path, strength=1.)
             xm.blender.render.render(outpath, cam=cam_obj)
         # With OLAT
         for envmap_path in xm.os.sortglob(FLAGS.test_light_dir, '*.json'):
             envmap_name = basename(envmap_path).split('.')[0]
+            outpath = join(outdir, 'rgba_%s.png' % envmap_name)
+            if exists(outpath):
+                continue
             olat = xm.io.json.load(envmap_path)
             # NOTE: not using intensity in JSON; because Blender uses Watts
             # (and fall-off), it's impossible to match exactly our predictions
@@ -196,40 +204,41 @@ def render_view(cam_transform_mat, cam_angle_x, outdir):
                 env=(1, 1, 1, 1), strength=0) # ambient
             pt_light = xm.blender.light.add_light_point( # point
                 xyz=olat['point_location'], energy=50_000)
-            outpath = join(outdir, 'rgba_%s.png' % envmap_name)
             xm.blender.render.render(outpath, cam=cam_obj)
             xm.blender.object.remove_objects(pt_light.name) # avoid light accu.
 
     # Render albedo
     # Let's assume white specularity, so the diffuse_color alone is albedo
-    diffuse_color_exr = join(outdir, 'diffuse-color.exr')
-    # glossy_color_exr = join(args.outdir, 'glossy_color.exr')
-    xm.blender.render.render_lighting_passes(
-        diffuse_color_exr, cam=cam_obj, select='diffuse_color')
-    # xm.blender.render.render_lighting_passes(
-    #     glossy_color_exr, cam=cam_obj, select='glossy_color')
-    diffuse_color = read_exr(diffuse_color_exr)
-    # glossy_color = read_exr(glossy_color_exr)
-    albedo = diffuse_color # + glossy_color
-    albedo = np.dstack((albedo, alpha))
     albedo_png = join(outdir, 'albedo.png')
-    xm.io.img.write_arr(albedo, albedo_png)
+    if not exists(albedo_png):
+        diffuse_color_exr = join(outdir, 'diffuse-color.exr')
+        # glossy_color_exr = join(args.outdir, 'glossy_color.exr')
+        xm.blender.render.render_lighting_passes(
+            diffuse_color_exr, cam=cam_obj, select='diffuse_color')
+        # xm.blender.render.render_lighting_passes(
+        #     glossy_color_exr, cam=cam_obj, select='glossy_color')
+        diffuse_color = read_exr(diffuse_color_exr)
+        # glossy_color = read_exr(glossy_color_exr)
+        albedo = diffuse_color # + glossy_color
+        albedo = np.dstack((albedo, alpha))
+        xm.io.img.write_arr(albedo, albedo_png)
 
     # Render normals ...
-    normal_exr = join(outdir, 'normal.exr')
-    normal_refball_exr = join(outdir, 'refball-normal.exr')
-    xm.blender.render.render_normal(
-        normal_exr, cam=cam_obj, world_coords=True,
-        outpath_refball=normal_refball_exr)
-    normals = read_exr(normal_exr)
     normal_png = join(outdir, 'normal.png')
-    xm.vis.geometry.normal_as_image(
-        normals, alpha, outpath=normal_png, keep_alpha=True)
-    # and also normals of the reference ball
-    normals_refball = read_exr(normal_refball_exr)
-    normal_refball_png = normal_refball_exr[:-len('.exr')] + '.png'
-    xm.vis.geometry.normal_as_image(
-        normals_refball, outpath=normal_refball_png, keep_alpha=True)
+    if not exists(normal_png):
+        normal_exr = join(outdir, 'normal.exr')
+        normal_refball_exr = join(outdir, 'refball-normal.exr')
+        xm.blender.render.render_normal(
+            normal_exr, cam=cam_obj, world_coords=True,
+            outpath_refball=normal_refball_exr)
+        normals = read_exr(normal_exr)
+        xm.vis.geometry.normal_as_image(
+            normals, alpha, outpath=normal_png, keep_alpha=True)
+        # and also normals of the reference ball
+        normals_refball = read_exr(normal_refball_exr)
+        normal_refball_png = normal_refball_exr[:-len('.exr')] + '.png'
+        xm.vis.geometry.normal_as_image(
+            normals_refball, outpath=normal_refball_png, keep_alpha=True)
 
 
 if __name__ == '__main__':

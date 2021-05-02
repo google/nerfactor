@@ -16,7 +16,8 @@
 
 set -e
 
-"$BLENDER_BIN" --background \
+PYTHONPATH="$REPO_DIR" \
+    "$BLENDER_BIN" --background \
     --python "$REPO_DIR/data_gen/nerf_synth/render.py" \
     --python-use-system-env \
     -- \
