@@ -91,7 +91,7 @@ def main(_):
     bds = np.moveaxis(bds, -1, 0).astype(np.float32) # Nx2
 
     # Rescale according to a default bd factor
-    scale = 1. / (bds.min() * .75)
+    scale = 1. / bds.min()
     poses[:, :3, 3] *= scale # scale translation
     bds *= scale
 

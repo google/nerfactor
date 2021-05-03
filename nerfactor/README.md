@@ -135,9 +135,9 @@ else
     imh='512'
 fi
 if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge ]]; then
-    near='0.1'; far='2'; use_nerf_alpha=true
+    near='0.1'; far='2'; use_nerf_alpha='True'
 else
-    near='2'; far='6'; use_nerf_alpha=false
+    near='2'; far='6'; use_nerf_alpha='False'
 fi
 surf_root="$proj_root/output/surf/$scene"
 shape_outdir="$proj_root/output/train/${scene}_shape"
@@ -146,7 +146,7 @@ REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='sh
 # II. Joint Optimization (training and validation)
 shape_ckpt="$shape_outdir/lr1e-2/checkpoints/ckpt-2"
 brdf_ckpt="$proj_root/output/train/merl/lr1e-2/checkpoints/ckpt-50"
-#if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
+#if [[ "$scene" == pinecone || "$scene" == vasedeck ]]; then
 #    xyz_jitter_std=0.0075
 #else
 xyz_jitter_std=0.01
@@ -156,8 +156,8 @@ outroot="$proj_root/output/train/${scene}_nerfactor"
 REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerfactor.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # III. Simultaneous Relighting and View Synthesis (testing)
-ckpt="$outroot/lr1e-3/checkpoints/ckpt-10"
-if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == chichen || "$scene" == stonehenge ]]; then
+ckpt="$outroot/lr5e-3/checkpoints/ckpt-10"
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge ]]; then
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt"
 else
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt" --color_correct_albedo
@@ -201,14 +201,14 @@ viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 # II. Joint Optimization (training and validation)
 data_root="$proj_root/data/selected/$scene"
 imh='512'
-if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == chichen || "$scene" == stonehenge ]]; then
-    near='0.1'; far='2'; use_nerf_alpha=true
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge ]]; then
+    near='0.1'; far='2'; use_nerf_alpha='True'
 else
-    near='2'; far='6'; use_nerf_alpha=false
+    near='2'; far='6'; use_nerf_alpha='False'
 fi
 surf_root="$proj_root/output/surf/$scene"
 shape_ckpt="$proj_root/output/train/${scene}_shape/lr1e-2/checkpoints/ckpt-2"
-#if [[ "$scene" == pinecone* || "$scene" == vasedeck* ]]; then
+#if [[ "$scene" == pinecone || "$scene" == vasedeck ]]; then
 #    xyz_jitter_std=0.0075
 #else
 xyz_jitter_std=0.01
@@ -218,8 +218,8 @@ outroot="$proj_root/output/train/${scene}_nerfactor_microfacet"
 REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerfactor_microfacet.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # III. Simultaneous Relighting and View Synthesis (testing)
-ckpt="$outroot/lr1e-3/checkpoints/ckpt-10"
-if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == chichen || "$scene" == stonehenge ]]; then
+ckpt="$outroot/lr5e-3/checkpoints/ckpt-10"
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge ]]; then
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt"
 else
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt" --color_correct_albedo
