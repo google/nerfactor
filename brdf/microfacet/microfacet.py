@@ -40,10 +40,10 @@ class Microfacet:
         rough: Nx1
         """
         if albedo is None:
-            albedo = tf.ones((pts2c.shape[0], 3), dtype=tf.float32)
+            albedo = tf.ones((tf.shape(pts2c)[0], 3), dtype=tf.float32)
         if rough is None:
             rough = self.default_rough * tf.ones(
-                (pts2c.shape[0], 1), dtype=tf.float32)
+                (tf.shape(pts2c)[0], 1), dtype=tf.float32)
         # Normalize directions and normals
         pts2l = mathutil.safe_l2_normalize(pts2l, axis=2)
         pts2c = mathutil.safe_l2_normalize(pts2c, axis=1)
@@ -63,7 +63,7 @@ class Microfacet:
         # Diffuse
         lambert = albedo / np.pi # Nx3
         brdf_diffuse = tf.broadcast_to(
-            lambert[:, None, :], brdf_glossy.shape) # NxLx3
+            lambert[:, None, :], tf.shape(brdf_glossy)) # NxLx3
         # Mix two shaders
         if self.lambert_only:
             brdf = brdf_diffuse
