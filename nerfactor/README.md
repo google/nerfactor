@@ -121,7 +121,7 @@ and illumination (training and validation), and finally perform simultaneous
 relighting and view synthesis results (testing):
 ```bash
 scene='hotdog_2163'
-gpus='0,1,2,3'
+gpus='0'
 overwrite='True'
 proj_root='/data/vision/billf/intrinsic/sim'
 repo_dir="$proj_root/code/nerfactor"
@@ -129,8 +129,12 @@ viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 
 # I. Shape Pre-Training
 data_root="$proj_root/data/selected/$scene"
-imh='512'
-if [[ "$scene" == pinecone* || "$scene" == vasedeck* || "$scene" == chichen || "$scene" == stonehenge ]]; then
+if [[ "$scene" == chichen || "$scene" == stonehenge ]]; then
+    imh='256'
+else
+    imh='512'
+fi
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge ]]; then
     near='0.1'; far='2'; use_nerf_alpha=true
 else
     near='2'; far='6'; use_nerf_alpha=false
