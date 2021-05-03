@@ -42,6 +42,8 @@ class Model(ShapeModel):
         self.config_brdf = ioutil.read_config(brdf_config_path)
         self.pred_brdf = config.getboolean('DEFAULT', 'pred_brdf')
         self.z_dim = self.config_brdf.getint('DEFAULT', 'z_dim')
+        self.normalize_brdf_z = self.config_brdf.getboolean(
+            'DEFAULT', 'normalize_z')
         # Shape
         self.shape_mode = config.get('DEFAULT', 'shape_mode')
         self.shape_model_ckpt = config.get('DEFAULT', 'shape_model_ckpt')
@@ -245,6 +247,11 @@ class Model(ShapeModel):
                 brdf_prop_jitter = self._pred_brdf_at(xyz + xyz_noise)
             else:
                 brdf_prop_jitter = None
+            if self.normalize_brdf_z:
+                brdf_prop = mathutil.safe_l2_normalize(brdf_prop, axis=1)
+                if brdf_prop_jitter is not None:
+                    brdf_prop_jitter = mathutil.safe_l2_normalize(
+                        brdf_prop_jitter, axis=1)
         else:
             brdf_prop = self._get_default_brdf_at(xyz)
             brdf_prop_jitter = None
@@ -384,7 +391,6 @@ class Model(ShapeModel):
         return albedo # Nx3
 
     def _pred_brdf_at(self, pts):
-        normalize_z = self.config_brdf.getboolean('DEFAULT', 'normalize_z')
         mlp_layers = self.net['brdf_z_mlp']
         out_layer = self.net['brdf_z_out']
         embedder = self.embedder['xyz']
@@ -395,8 +401,6 @@ class Model(ShapeModel):
             return brdf_z
 
         brdf_z = self.chunk_apply(chunk_func, pts, self.z_dim, self.mlp_chunk)
-        if normalize_z:
-            brdf_z = mathutil.safe_l2_normalize(brdf_z, axis=1)
         return brdf_z # NxZ
 
     def _eval_brdf_at(self, pts2l, pts2c, normal, albedo, brdf_prop):

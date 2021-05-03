@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import numpy as np
-
 import tensorflow as tf
-tf.compat.v1.enable_eager_execution()
 
-from google3.experimental.users.xiuming.sim.sim.util import math as mathutil
+from nerfactor.util import math as mathutil
 
 
 class Microfacet:
