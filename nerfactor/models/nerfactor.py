@@ -825,7 +825,8 @@ class Model(ShapeModel):
             hw = rgb.shape[:2]
             # Optionally, embed the light used to right bottom corner of render
             if light is not None:
-                imgutil.frame_image(light, rgb=(1, 1, 1), width=1)
+                frame_width = int(max(1 / 16 * light.shape[0], 1))
+                imgutil.frame_image(light, rgb=(1, 1, 1), width=frame_width)
                 light_vis_h = int(32 / 256 * hw[0]) # scale light probe size
                 light = xm.img.resize(light, new_h=light_vis_h)
                 rgb[:light.shape[0], -light.shape[1]:] = light
