@@ -63,7 +63,7 @@ def main(_):
     assert len(img_paths) == projs.shape[0], \
         "Numbers of images and camera poses are different"
 
-    # For each view
+    # For each training or validation view
     imgs, converted_poses = [], []
     factor = None
     for i, img_file in enumerate(tqdm(img_paths, desc="Loading Images")):
@@ -103,7 +103,7 @@ def main(_):
         f"poses ({n_poses})")
 
     # Move variable dim to axis 0
-    poses = np.moveaxis(converted_poses, -1, 0).astype(np.float32)
+    converted_poses = np.moveaxis(converted_poses, -1, 0).astype(np.float32)
     imgs = np.moveaxis(imgs, -1, 0)
 
     # Training-validation split
@@ -112,8 +112,14 @@ def main(_):
         [x for x in np.arange(n_imgs) if x not in ind_vali])
 
     # Figure out camera angle
-    fl = poses[0, -1, -1]
-    cam_angle_x = np.arctan2(imgs.shape[2] / 2, fl) * 2
+    cam_angle_x = None
+    for i in range(converted_poses.shape[0]):
+        fl = converted_poses[i, -1, -1]
+        if cam_angle_x is None:
+            cam_angle_x = np.arctan2(imgs.shape[2] / 2, fl) * 2
+        else:
+            assert cam_angle_x == np.arctan2(imgs.shape[2] / 2, fl) * 2, \
+                "The frames have different focal lengths"
 
     # Training frames
     train_meta = {'camera_angle_x': cam_angle_x, 'frames': []}
@@ -124,7 +130,7 @@ def main(_):
         xm.io.img.write_float(
             img, join(FLAGS.outroot, view_folder_, 'rgba.png'), clip=True)
         # Record metadata
-        pose = poses[i, :, :]
+        pose = converted_poses[i, :, :]
         c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
         frame_meta = {
             'file_path': './%s/rgba' % view_folder_, 'rotation': 0,
@@ -149,7 +155,7 @@ def main(_):
         xm.io.img.write_float(
             img, join(FLAGS.outroot, view_folder_, 'rgba.png'), clip=True)
         # Record metadata
-        pose = poses[i, :, :]
+        pose = converted_poses[i, :, :]
         c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
         frame_meta = {
             'file_path': './%s/rgba' % view_folder_, 'rotation': 0,
@@ -171,19 +177,34 @@ def main(_):
 
     # ------ Testing
 
-    from IPython import embed; embed()
-    # Test views
+    # Load test poses
+    cams_path = join(FLAGS.scene_dir, 'test_seq', 'spiral_step720', 'calib.mat')
+    data = sio.loadmat(cams_path)
+    poses = data['poses'] # w2c
+
+    # Their results and alpha
+    alpha_paths = xm.os.sortglob(
+        join(FLAGS.their_results_dir, 'alpha_map'), '*', ext='png')
+    lp0_paths = xm.os.sortglob(
+        join(FLAGS.their_results_dir, 'img_est_000'), '*', ext='png')
+    lp1_paths = xm.os.sortglob(
+        join(FLAGS.their_results_dir, 'img_est_001'), '*', ext='png')
+    lp2_paths = xm.os.sortglob(
+        join(FLAGS.their_results_dir, 'img_est_002'), '*', ext='png')
+    lp3_paths = xm.os.sortglob(
+        join(FLAGS.their_results_dir, 'img_est_003'), '*', ext='png')
+
+    # For each test view
     test_meta = {'camera_angle_x': cam_angle_x, 'frames': []}
-    for i in range(test_poses.shape[0]):
+    for i in range(poses.shape[0]):
         view_folder_ = view_folder.format(mode='test', i=i)
+        c2w = np.linalg.inv(poses[i, :, :])
         # Record metadata
-        pose = test_poses[i, :, :]
-        c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
         frame_meta = {
             'file_path': '', 'rotation': 0, 'transform_matrix': c2w.tolist()}
         test_meta['frames'].append(frame_meta)
         # Write the nearest input to this test view folder
-        dist = np.linalg.norm(pose[:, 3] - poses[:, :, 3], axis=1)
+        dist = np.linalg.norm(c2w[:3, 3] - converted_poses[:, :3, 3], axis=1)
         nn_i = np.argmin(dist)
         nn_img = imgs[nn_i, :, :, :]
         xm.io.img.write_float(
@@ -196,6 +217,32 @@ def main(_):
             'imw': img.shape[1], 'scene': '', 'spp': 0, 'original_path': ''}
         xm.io.json.write(
             frame_meta, join(FLAGS.outroot, view_folder_, 'metadata.json'))
+        # Also copy over their results
+        alpha = xm.io.img.read(alpha_paths[i])
+        lp0_result = xm.io.img.read(lp0_paths[i])
+        lp1_result = xm.io.img.read(lp1_paths[i])
+        lp2_result = xm.io.img.read(lp2_paths[i])
+        lp3_result = xm.io.img.read(lp3_paths[i])
+        lp0_rgba = np.concatenate((lp0_result, alpha[:, :, None]), axis=2)
+        lp1_rgba = np.concatenate((lp1_result, alpha[:, :, None]), axis=2)
+        lp2_rgba = np.concatenate((lp2_result, alpha[:, :, None]), axis=2)
+        lp3_rgba = np.concatenate((lp3_result, alpha[:, :, None]), axis=2)
+        lp0_rgba = xm.img.normalize_uint(lp0_rgba)
+        lp1_rgba = xm.img.normalize_uint(lp1_rgba)
+        lp2_rgba = xm.img.normalize_uint(lp2_rgba)
+        lp3_rgba = xm.img.normalize_uint(lp3_rgba)
+        lp0_rgba = xm.img.resize(lp0_rgba, new_h=FLAGS.h, method='tf')
+        lp1_rgba = xm.img.resize(lp1_rgba, new_h=FLAGS.h, method='tf')
+        lp2_rgba = xm.img.resize(lp2_rgba, new_h=FLAGS.h, method='tf')
+        lp3_rgba = xm.img.resize(lp3_rgba, new_h=FLAGS.h, method='tf')
+        xm.io.img.write_float(
+            lp0_rgba, join(FLAGS.outroot, view_folder_, 'lp0.png'))
+        xm.io.img.write_float(
+            lp1_rgba, join(FLAGS.outroot, view_folder_, 'lp1.png'))
+        xm.io.img.write_float(
+            lp2_rgba, join(FLAGS.outroot, view_folder_, 'lp2.png'))
+        xm.io.img.write_float(
+            lp3_rgba, join(FLAGS.outroot, view_folder_, 'lp3.png'))
 
     # Write JSON
     xm.io.json.write(test_meta, test_json)
