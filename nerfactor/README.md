@@ -60,10 +60,10 @@ the end of the run.
     else
         imh='512'
     fi
-    if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge ]]; then
-        near='0.1'; far='2'; lin_in_disp='True'
+    if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge || "$scene" == rnr ]]; then
+        near='0.1'; far='2'
     else
-        near='2'; far='6'; lin_in_disp='False'
+        near='2'; far='6'
     fi
     if [[ "$scene" == ficus* || "$scene" == hotdog_probe_16-00_latlongmap ]]; then
         lr='1e-4'
@@ -71,7 +71,7 @@ the end of the run.
         lr='5e-4'
     fi
     outroot="$proj_root/output/train/${scene}_nerf"
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,lin_in_disp=$lin_in_disp,lr=$lr,outroot=$outroot,viewer_prefix=$viewer_prefix"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,lr=$lr,outroot=$outroot,viewer_prefix=$viewer_prefix"
     ```
    Check the quality of this NeRF geometry by inspecting the visualization HTML
    for the alpha and normal maps. You might need to re-run this with another
