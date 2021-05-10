@@ -174,8 +174,7 @@ class Model(ShapeModel):
     def _load_light(self, path):
         ext = basename(path).split('.')[-1]
         if ext == 'exr':
-            light = ioutil.load_exr(path)
-            arr = np.dstack((light['R'], light['G'], light['B']))
+            arr = xm.io.exr.read(path)
         elif ext == 'hdr':
             arr = xm.io.hdr.read(path)
         else:

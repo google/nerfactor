@@ -107,13 +107,6 @@ def write_json(data, path):
         json.dump(data, h, indent=4, sort_keys=True)
 
 
-def load_exr(exr_f):
-    import xiuminglib as xm
-
-    exr = xm.io.exr.EXR(exr_path=exr_f)
-    return exr.data
-
-
 def load_np(np_f):
     if np_f.endswith('.npy'):
         with open(np_f, 'rb') as h:

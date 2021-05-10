@@ -15,7 +15,6 @@
 from io import BytesIO
 from os.path import basename
 import numpy as np
-import cv2
 from third_party.xiuminglib import xiuminglib as xm
 
 
@@ -190,18 +189,10 @@ def save_npz(dict_, path):
         h.write(io_buffer.getvalue())
 
 
-def read_exr(path):
-    bgr = cv2.imread(path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
-    assert bgr is not None, "Loading failed"
-    if bgr.ndim != 3 or bgr.shape[2] != 3:
-        raise NotImplementedError(bgr.shape)
-    return bgr[:, :, ::-1]
-
-
 def read_light(path):
     ext = basename(path).split('.')[-1]
     if ext == 'exr':
-        arr = read_exr(path)
+        arr = xm.io.exr.read(path)
     elif ext == 'hdr':
         arr = xm.io.hdr.read(path)
     else:

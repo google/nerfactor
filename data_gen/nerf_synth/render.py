@@ -7,7 +7,7 @@ from absl import app, flags
 from tqdm import tqdm
 
 from third_party.xiuminglib import xiuminglib as xm
-from data_gen.util import read_exr, read_light, listify_matrix
+from data_gen.util import read_light, listify_matrix
 from nerfactor.util import img as imgutil
 
 import bpy
@@ -217,7 +217,7 @@ def render_view(cam_transform_mat, cam_angle_x, outdir):
             diffuse_color_exr, cam=cam_obj, select='diffuse_color')
         # xm.blender.render.render_lighting_passes(
         #     glossy_color_exr, cam=cam_obj, select='glossy_color')
-        diffuse_color = read_exr(diffuse_color_exr)
+        diffuse_color = xm.io.exr.read(diffuse_color_exr)
         # glossy_color = read_exr(glossy_color_exr)
         albedo = diffuse_color # + glossy_color
         albedo = np.dstack((albedo, alpha))
@@ -231,11 +231,11 @@ def render_view(cam_transform_mat, cam_angle_x, outdir):
         xm.blender.render.render_normal(
             normal_exr, cam=cam_obj, world_coords=True,
             outpath_refball=normal_refball_exr)
-        normals = read_exr(normal_exr)
+        normals = xm.io.exr.read(normal_exr)
         xm.vis.geometry.normal_as_image(
             normals, alpha, outpath=normal_png, keep_alpha=True)
         # and also normals of the reference ball
-        normals_refball = read_exr(normal_refball_exr)
+        normals_refball = xm.io.exr.read(normal_refball_exr)
         normal_refball_png = normal_refball_exr[:-len('.exr')] + '.png'
         xm.vis.geometry.normal_as_image(
             normals_refball, outpath=normal_refball_png, keep_alpha=True)

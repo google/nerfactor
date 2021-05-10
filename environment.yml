@@ -12,7 +12,10 @@ dependencies:
     - tqdm
     - pillow
     - opencv
+    - rtree
+    - pyembree
     - pip:
+        - trimesh
         - tensorflow==2.2
     - cudatoolkit=10.1
     - cudnn=7.6

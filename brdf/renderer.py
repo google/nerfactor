@@ -233,8 +233,7 @@ def load_light(envmap_path, envmap_inten=1., envmap_h=None, vis_path=None):
         envmap[(i - d):(i + d), (j - d):(j + d), :] = 1
 
     else:
-        exr = xm.io.exr.EXR(envmap_path)
-        envmap = np.dstack((exr.data['R'], exr.data['G'], exr.data['B']))
+        envmap = xm.io.exr.read(envmap_path)
 
     # Optionally resize
     if envmap_h is not None:

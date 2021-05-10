@@ -14,18 +14,18 @@
 
 from os.path import join
 import numpy as np
+from scipy import io as sio
 from tqdm import tqdm
 from absl import app, flags
+import trimesh
 
 from third_party.xiuminglib import xiuminglib as xm
-from data_gen.util import read_bundle_file, recenter_poses, \
-    generate_spherical_poses
 
 
 flags.DEFINE_string('scene_dir', '', "scene directory")
+flags.DEFINE_string('their_results_dir', '', "directory to their results")
 flags.DEFINE_integer('h', 512, "output image height")
 flags.DEFINE_integer('n_vali', 2, "number of held-out validation views")
-flags.DEFINE_string('exclude', '', "indices of frames to exclude")
 flags.DEFINE_string('outroot', '', "output root")
 flags.DEFINE_boolean('debug', False, "debug toggle")
 FLAGS = flags.FLAGS
@@ -39,74 +39,72 @@ def main(_):
     vali_json = join(FLAGS.outroot, 'transforms_val.json')
     test_json = join(FLAGS.outroot, 'transforms_test.json')
 
+    # Load shape
+    obj_path = join(FLAGS.scene_dir, 'mesh.obj')
+    obj = trimesh.load(obj_path)
+    obj = trimesh.ray.ray_pyembree.RayMeshIntersector(obj, scale_to_box=False)
+
     # ------ Training and validation
 
-    if FLAGS.exclude == '':
-        exclude = []
-    else:
-        exclude = [int(x) for x in FLAGS.exclude.split(',')]
-
     # Load poses
-    bundle_path = join(FLAGS.scene_dir, 'cameras', 'bundle.out')
-    cams, _ = read_bundle_file(bundle_path)
-    cams = [x for i, x in enumerate(cams) if i not in exclude]
+    cams_path = join(FLAGS.scene_dir, 'calib.mat')
+    data = sio.loadmat(cams_path)
+    poses = data['poses']
+    projs = data['projs']
 
-    # Load and resize images, and then convert their corresponding poses
-    img_dir = join(FLAGS.scene_dir, 'images')
-    img_paths = xm.os.sortglob(
-        img_dir, filename='*', ext=('jpg', 'jpeg', 'png'), ext_ignore_case=True)
-    img_paths = [x for i, x in enumerate(img_paths) if i not in exclude]
+    # Glob image paths
+    img_dir = join(FLAGS.scene_dir, 'rgb0')
+    img_paths = xm.os.sortglob(img_dir, filename='*', ext='exr')
     assert img_paths, "No image globbed"
     if FLAGS.debug:
         img_paths = img_paths[:4]
-        cams = cams[:4]
-    imgs, poses = [], []
+        poses = poses[:4, :, :]
+        projs = projs[:4, :, :]
+    assert len(img_paths) == projs.shape[0], \
+        "Numbers of images and camera poses are different"
+
+    # For each view
+    imgs, converted_poses = [], []
     factor = None
-    for i, img_file in enumerate(tqdm(img_paths, desc="Loading images")):
-        img = xm.io.img.read(img_file)
-        img = xm.img.normalize_uint(img)
+    for i, img_file in enumerate(tqdm(img_paths, desc="Loading Images")):
+        # Load image and render alpha
+        img = xm.io.exr.read(img_file)
+        alpha = render_alpha(
+            obj, poses[i, :, :], projs[i, :, :])
         if factor is None:
             factor = float(img.shape[0]) / FLAGS.h
         else:
             assert float(img.shape[0]) / FLAGS.h == factor, \
                 "Images are of varying sizes"
+        # Resize
         img = xm.img.resize(img, new_h=FLAGS.h, method='tf')
-        if img.shape[2] == 3:
-            # NOTE: add an all-one alpha
-            img = np.dstack((img, np.ones_like(img)[:, :, :1]))
+        alpha = xm.img.resize(alpha[:, :, None], new_h=FLAGS.h, method='tf')
+        img = np.dstack((img, alpha))
         imgs.append(img)
         # Corresponding pose
-        cam = cams[i]
-        w2c_rot = cam['R']
-        w2c_trans = cam['T']
+        w2c = poses[i, :, :]
+        w2c_rot = w2c[:3, :3]
+        w2c_trans = w2c[:3, 3]
         c2w_rot = np.linalg.inv(w2c_rot)
         c2w_trans = -c2w_rot.dot(w2c_trans)
-        h_w_f = np.array(img.shape[:2] + (cam['f'],))
+        f = projs[i, 0, 0] / factor
+        h_w_f = np.array(img.shape[:2] + (f,))
         pose = np.hstack(( # image width and height are already after resizing
             c2w_rot, c2w_trans.reshape(-1, 1), h_w_f.reshape(-1, 1)))
-        poses.append(pose)
+        converted_poses.append(pose)
     imgs = np.stack(imgs, axis=-1)
-    poses = np.dstack(poses)
+    converted_poses = np.dstack(converted_poses)
 
     # Sanity check
-    n_poses = poses.shape[-1]
+    n_poses = converted_poses.shape[-1]
     n_imgs = imgs.shape[-1]
     assert n_poses == n_imgs, (
         f"Mismatch between numbers of images ({n_imgs}) and "
         f"poses ({n_poses})")
 
-    # Update poses according to downsampling
-    poses[2, 4, :] = poses[2, 4, :] * 1. / factor
-
     # Move variable dim to axis 0
-    poses = np.moveaxis(poses, -1, 0).astype(np.float32)
+    poses = np.moveaxis(converted_poses, -1, 0).astype(np.float32)
     imgs = np.moveaxis(imgs, -1, 0)
-
-    # Recenter poses.
-    poses = recenter_poses(poses)
-
-    # Generate a spiral/spherical ray path for rendering videos
-    poses, test_poses = generate_spherical_poses(poses)
 
     # Training-validation split
     ind_vali = np.arange(n_imgs)[:-1:(n_imgs // FLAGS.n_vali)]
@@ -173,6 +171,7 @@ def main(_):
 
     # ------ Testing
 
+    from IPython import embed; embed()
     # Test views
     test_meta = {'camera_angle_x': cam_angle_x, 'frames': []}
     for i in range(test_poses.shape[0]):
@@ -200,6 +199,22 @@ def main(_):
 
     # Write JSON
     xm.io.json.write(test_meta, test_json)
+
+
+def render_alpha(inter, pose, proj, spp=4):
+    obj2cvcam = pose
+    cam = xm.camera.PerspCam()
+    cam.int_mat = proj
+    cam.ext_mat_4x4 = obj2cvcam
+    # Cast rays to object
+    ray_dirs = cam.gen_rays(spp=spp)
+    ray_dirs_flat = np.reshape(ray_dirs, (-1, 3))
+    ray_origins = np.tile(cam.loc, (ray_dirs_flat.shape[0], 1))
+    hit = inter.intersects_any(ray_origins, ray_dirs_flat)
+    hit = np.reshape(hit, (cam.im_h, cam.im_w, spp))
+    # Compute alpha
+    alpha = np.mean(hit.astype(float), axis=2)
+    return alpha
 
 
 if __name__ == '__main__':
