@@ -106,6 +106,7 @@ the end of the run.
         occu_thres='0.5'
         scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'
     else
+        occu_thres='0'
         scene_bbox=''
     fi
     out_root="$proj_root/output/surf/$scene"

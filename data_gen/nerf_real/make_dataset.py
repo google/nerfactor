@@ -18,7 +18,7 @@ from tqdm import tqdm
 from absl import app, flags
 
 from third_party.xiuminglib import xiuminglib as xm
-from data_gen.util import recenter_poses, generate_spherical_poses
+from data_gen.util import recenter_poses, spherify_poses
 
 
 flags.DEFINE_string('scene_dir', '', "scene directory")
@@ -99,8 +99,8 @@ def main(_):
     # Recenter poses
     poses = recenter_poses(poses)
 
-    # Generate a spiral/spherical ray path for rendering videos
-    poses, test_poses = generate_spherical_poses(poses)
+    # Generate a spiral/spherical path for rendering videos
+    poses, test_poses = spherify_poses(poses)
 
     # Training-validation split
     ind_vali = np.arange(n_imgs)[:-1:(n_imgs // FLAGS.n_vali)]

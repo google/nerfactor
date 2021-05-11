@@ -15,18 +15,23 @@
 from io import BytesIO
 from os.path import basename
 import numpy as np
+
 from third_party.xiuminglib import xiuminglib as xm
 
 
-def generate_spherical_poses(poses):
-    """Generate a 360 degree spherical path for rendering.
-    """
-    p34_to_44 = lambda p: np.concatenate([
-        p,
-        np.tile(np.reshape(np.eye(4)[-1, :], [1, 1, 4]), [p.shape[0], 1, 1])
-    ], 1)
+def spherify_poses(poses):
+    """poses: Nx3x5 (final column contains H, W, and focal length)."""
     rays_d = poses[:, :3, 2:3]
-    rays_o = poses[:, :3, 3:4]
+    rays_o = poses[:, :3, 3:4] # because pose is camera-to-world
+
+    def p34_to_44(p):
+        """p: Nx3x4."""
+        return np.concatenate((
+            p,
+            np.tile(
+                np.reshape(np.eye(4)[-1, :], (1, 1, 4)),
+                (p.shape[0], 1, 1)),
+        ), 1)
 
     def min_line_dist(rays_o, rays_d):
         a_i = np.eye(3) - rays_d * np.transpose(rays_d, [0, 2, 1])
@@ -38,9 +43,9 @@ def generate_spherical_poses(poses):
     pt_mindist = min_line_dist(rays_o, rays_d)
     center = pt_mindist
     up = (poses[:, :3, 3] - center).mean(0)
-    vec0 = _normalize(up)
-    vec1 = _normalize(np.cross([.1, .2, .3], vec0))
-    vec2 = _normalize(np.cross(vec0, vec1))
+    vec0 = normalize(up)
+    vec1 = normalize(np.cross([.1, .2, .3], vec0))
+    vec2 = normalize(np.cross(vec0, vec1))
     pos = center
     c2w = np.stack([vec1, vec2, vec0, pos], 1)
     poses_reset = (
@@ -51,20 +56,19 @@ def generate_spherical_poses(poses):
     rad *= sc
     centroid = np.mean(poses_reset[:, :3, 3], 0)
     zh = centroid[2]
-    radcircle = np.sqrt(rad**2 - zh**2)
-    new_poses = []
+    radcircle = np.sqrt(rad ** 2 - zh ** 2)
 
+    new_poses = []
     for th in np.linspace(0., 2. * np.pi, 120):
         camorigin = np.array([
             radcircle * np.cos(th), radcircle * np.sin(th), zh])
         up = np.array([0, 0, -1.])
-        vec2 = _normalize(camorigin)
-        vec0 = _normalize(np.cross(vec2, up))
-        vec1 = _normalize(np.cross(vec2, vec0))
+        vec2 = normalize(camorigin)
+        vec0 = normalize(np.cross(vec2, up))
+        vec1 = normalize(np.cross(vec2, vec0))
         pos = camorigin
         p = np.stack([vec0, vec1, vec2, pos], 1)
         new_poses.append(p)
-
     new_poses = np.stack(new_poses, 0)
     new_poses = np.concatenate([
         new_poses,
@@ -74,8 +78,7 @@ def generate_spherical_poses(poses):
         poses_reset[:, :3, :4],
         np.broadcast_to(poses[0, :3, -1:], poses_reset[:, :3, -1:].shape)
     ], -1)
-    render_poses = new_poses[:, :3, :4]
-    return poses_reset, render_poses
+    return poses_reset, new_poses
 
 
 def recenter_poses(poses):
@@ -83,7 +86,7 @@ def recenter_poses(poses):
     """
     poses_ = poses.copy()
     bottom = np.reshape([0, 0, 0, 1.], [1, 4])
-    c2w = _poses_avg(poses)
+    c2w = poses_avg(poses)
     c2w = np.concatenate([c2w[:3, :4], bottom], -2)
     bottom = np.tile(np.reshape(bottom, [1, 1, 4]), [poses.shape[0], 1, 1])
     poses = np.concatenate([poses[:, :3, :4], bottom], -2)
@@ -93,18 +96,18 @@ def recenter_poses(poses):
     return poses
 
 
-def _poses_avg(poses):
+def poses_avg(poses):
     """Average poses according to the original NeRF code.
     """
     hwf = poses[0, :3, -1:]
     center = poses[:, :3, 3].mean(0)
-    vec2 = _normalize(poses[:, :3, 2].sum(0))
+    vec2 = normalize(poses[:, :3, 2].sum(0))
     up = poses[:, :3, 1].sum(0)
     c2w = np.concatenate([_viewmatrix(vec2, up, center), hwf], 1)
     return c2w
 
 
-def _normalize(x):
+def normalize(x):
     """Normalization helper function.
     """
     return x / np.linalg.norm(x)
@@ -113,10 +116,10 @@ def _normalize(x):
 def _viewmatrix(z, up, pos):
     """Construct lookat view matrix.
     """
-    vec2 = _normalize(z)
+    vec2 = normalize(z)
     vec1_avg = up
-    vec0 = _normalize(np.cross(vec1_avg, vec2))
-    vec1 = _normalize(np.cross(vec2, vec0))
+    vec0 = normalize(np.cross(vec1_avg, vec2))
+    vec1 = normalize(np.cross(vec2, vec0))
     m = np.stack([vec0, vec1, vec2, pos], 1)
     return m
 
