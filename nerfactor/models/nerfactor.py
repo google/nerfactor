@@ -210,10 +210,10 @@ class Model(ShapeModel):
             normal_jitter = None
         else:
             normal_pred = self._pred_normal_at(xyz)
-            if xyz_noise is not None and self.normal_smooth_weight > 0:
-                normal_jitter = self._pred_normal_at(xyz + xyz_noise)
-            else:
+            if xyz_noise is None:
                 normal_jitter = None
+            else:
+                normal_jitter = self._pred_normal_at(xyz + xyz_noise)
         normal_pred = mathutil.safe_l2_normalize(normal_pred, axis=1)
         if normal_jitter is not None:
             normal_jitter = mathutil.safe_l2_normalize(normal_jitter, axis=1)
@@ -224,16 +224,16 @@ class Model(ShapeModel):
             lvis_jitter = None
         else:
             lvis_pred = self._pred_lvis_at(xyz, surf2l)
-            if xyz_noise is not None and self.lvis_smooth_weight > 0:
-                lvis_jitter = self._pred_lvis_at(xyz + xyz_noise, surf2l)
-            else:
+            if xyz_noise is None:
                 lvis_jitter = None
+            else:
+                lvis_jitter = self._pred_lvis_at(xyz + xyz_noise, surf2l)
         # ------ Albedo
         albedo = self._pred_albedo_at(xyz)
-        if xyz_noise is not None and self.albedo_smooth_weight > 0:
-            albedo_jitter = self._pred_albedo_at(xyz + xyz_noise)
-        else:
+        if xyz_noise is None:
             albedo_jitter = None
+        else:
+            albedo_jitter = self._pred_albedo_at(xyz + xyz_noise)
         if albedo_scales is not None:
             albedo = tf.reshape(albedo_scales, (1, 3)) * albedo
         if albedo_override is not None:
@@ -242,10 +242,10 @@ class Model(ShapeModel):
         # ------ BRDFs
         if self.pred_brdf:
             brdf_prop = self._pred_brdf_at(xyz)
-            if xyz_noise is not None and self.brdf_smooth_weight > 0:
-                brdf_prop_jitter = self._pred_brdf_at(xyz + xyz_noise)
-            else:
+            if xyz_noise is None:
                 brdf_prop_jitter = None
+            else:
+                brdf_prop_jitter = self._pred_brdf_at(xyz + xyz_noise)
             if self.normalize_brdf_z:
                 brdf_prop = mathutil.safe_l2_normalize(brdf_prop, axis=1)
                 if brdf_prop_jitter is not None:
@@ -282,8 +282,10 @@ class Model(ShapeModel):
         rgb = tf.scatter_nd(ind, rgb, (n, 3))
         normal = tf.scatter_nd(ind, normal, (n, 3))
         lvis = tf.scatter_nd(ind, lvis, (n, l))
-        normal_jitter = tf.scatter_nd(ind, normal_jitter, (n, 3))
-        lvis_jitter = tf.scatter_nd(ind, lvis_jitter, (n, l))
+        if normal_jitter is not None:
+            normal_jitter = tf.scatter_nd(ind, normal_jitter, (n, 3))
+        if lvis_jitter is not None:
+            lvis_jitter = tf.scatter_nd(ind, lvis_jitter, (n, l))
         brdf_prop_jitter = tf.scatter_nd(ind, brdf_prop_jitter, (n, self.z_dim))
         albedo_jitter = tf.scatter_nd(ind, albedo_jitter, (n, 3))
         # ------ Loss
