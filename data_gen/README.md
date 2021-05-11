@@ -79,11 +79,12 @@ and skip the following instructions.
     proj_root='/data/vision/billf/intrinsic/sim'
     repo_dir="$proj_root/code/nerfactor"
     scene_dir="$proj_root/data/rnr/material_sphere"
-    their_results_dir="$proj_root/data/rnr/material_sphere_results"
+    their_quan_results_dir="$proj_root/data/rnr/material_sphere_results_quantitative"
+    their_qual_results_dir="$proj_root/data/rnr/material_sphere_results"
     h='512'
     n_vali='2'
     outroot="$proj_root/data/rnr_proc/material_sphere"
-    REPO_DIR="$repo_dir" "$repo_dir/data_gen/rnr_synth/make_dataset_run.sh" --scene_dir="$scene_dir" --their_results_dir="$their_results_dir" --h="$h" --n_vali="$n_vali" --outroot="$outroot"
+    REPO_DIR="$repo_dir" "$repo_dir/data_gen/rnr_synth/make_dataset_run.sh" --scene_dir="$scene_dir" --their_quan_results_dir="$their_quan_results_dir" --their_qual_results_dir="$their_qual_results_dir" --h="$h" --n_vali="$n_vali" --outroot="$outroot"
     ```
 
 
