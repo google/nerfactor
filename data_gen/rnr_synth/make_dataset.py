@@ -245,9 +245,10 @@ def main(_):
         alpha = xm.io.img.read(alpha_path)
         write_their_result(
             pred_paths[i], alpha,
-            join(FLAGS.outroot, view_folder_, 'lp1_rnr.png'))
+            join(FLAGS.outroot, view_folder_, 'rnr_lp1_pred.png'))
         write_their_result(
-            gt_paths[i], alpha, join(FLAGS.outroot, view_folder_, 'lp1_gt.png'))
+            gt_paths[i], alpha,
+            join(FLAGS.outroot, view_folder_, 'rnr_lp1_gt.png'))
         test_i += 1
 
     # Their qualitative results and alpha
@@ -288,13 +289,17 @@ def main(_):
         # Also copy over their results
         alpha = xm.io.img.read(alpha_paths[i])
         write_their_result(
-            lp0_paths[i], alpha, join(FLAGS.outroot, view_folder_, 'lp0.png'))
+            lp0_paths[i], alpha,
+            join(FLAGS.outroot, view_folder_, 'rnr_lp0_pred.png'))
         write_their_result(
-            lp1_paths[i], alpha, join(FLAGS.outroot, view_folder_, 'lp1.png'))
+            lp1_paths[i], alpha,
+            join(FLAGS.outroot, view_folder_, 'rnr_lp1_pred.png'))
         write_their_result(
-            lp2_paths[i], alpha, join(FLAGS.outroot, view_folder_, 'lp2.png'))
+            lp2_paths[i], alpha,
+            join(FLAGS.outroot, view_folder_, 'rnr_lp2_pred.png'))
         write_their_result(
-            lp3_paths[i], alpha, join(FLAGS.outroot, view_folder_, 'lp3.png'))
+            lp3_paths[i], alpha,
+            join(FLAGS.outroot, view_folder_, 'rnr_lp3_pred.png'))
         test_i += 1
 
     # Write JSON
