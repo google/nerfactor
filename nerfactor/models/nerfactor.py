@@ -220,7 +220,8 @@ class Model(ShapeModel):
         # NOTE: rayd and normal_pred must be normalized
         # ------ Light visibility
         if self.shape_mode == 'nerf':
-            lvis_pred = lvis
+            # 0 visibility in all directions leads to problematic gradient
+            lvis_pred = tf.clip_by_value(lvis, 1e-8, 1.)
             lvis_jitter = None
         else:
             lvis_pred = self._pred_lvis_at(xyz, surf2l)
@@ -255,8 +256,7 @@ class Model(ShapeModel):
             brdf_prop = self._get_default_brdf_at(xyz)
             brdf_prop_jitter = None
         if brdf_z_override is not None:
-            brdf_z_override = tf.reshape(
-                brdf_z_override, (1, tf.shape(brdf_prop)[1]))
+            brdf_z_override = tf.reshape(brdf_z_override, (1, self.z_dim))
             brdf_prop = tf.tile(brdf_z_override, (tf.shape(brdf_prop)[0], 1))
         brdf = self._eval_brdf_at(
             surf2l, surf2c, normal_pred, albedo, brdf_prop) # NxLx3
@@ -418,7 +418,7 @@ class Model(ShapeModel):
         rusink = geomutil.dir2rusink(ldir_flat, vdir_flat) # NLx3
         # Repeat BRDF Z
         z_rep = tf.tile(z[:, None, :], (1, tf.shape(ldir)[1], 1))
-        z_flat = tf.reshape(z_rep, (-1, tf.shape(z)[1]))
+        z_flat = tf.reshape(z_rep, (-1, self.z_dim))
         # Mask out back-lit directions for speed
         local_normal = tf.convert_to_tensor((0, 0, 1), dtype=tf.float32)
         local_normal = tf.reshape(local_normal, (3, 1))

@@ -119,11 +119,14 @@ def main(_):
     # Optionally, edit albedo and BRDF
     albedo_override = None
     if FLAGS.edit_albedo:
-        tgt_albedo = (0.913, 0.921, 0.925) # aluminium
+        # tgt_albedo = (0.913, 0.921, 0.925) # aluminium
+        tgt_albedo = (1, 0.843, 0) # gold
         albedo_override = tf.convert_to_tensor(tgt_albedo, dtype=tf.float32)
     brdf_z_override = None
     if FLAGS.edit_brdf:
-        tgt_brdf_z = (1.6404238, -0.172426, -0.5986401) # aluminium
+        tgt_brdf = 'gold-metallic-paint1'
+        tgt_brdf_z = model.brdf_model.latent_code.z[
+            model.brdf_model.brdf_names.index(tgt_brdf), :]
         brdf_z_override = tf.convert_to_tensor(tgt_brdf_z, dtype=tf.float32)
 
     # For all test views
