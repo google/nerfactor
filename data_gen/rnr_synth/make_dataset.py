@@ -33,6 +33,9 @@ flags.DEFINE_string(
 flags.DEFINE_integer('h', 512, "output image height")
 flags.DEFINE_integer('n_vali', 2, "number of held-out validation views")
 flags.DEFINE_string('outroot', '', "output root")
+flags.DEFINE_boolean(
+    'all_test_views', False,
+    "to process all test views or just those for quantitative evaluation")
 flags.DEFINE_boolean('debug', False, "debug toggle")
 FLAGS = flags.FLAGS
 
@@ -160,7 +163,7 @@ def main(_):
         xm.io.img.write_float(
             img, join(FLAGS.outroot, view_folder_, 'rgba.png'), clip=True)
         # Record metadata
-        pose = converted_poses[i, :, :]
+        pose = converted_poses[i, :, :] # 3x5
         c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
         frame_meta = {
             'file_path': './%s/rgba' % view_folder_, 'rotation': 0,
@@ -185,7 +188,7 @@ def main(_):
         xm.io.img.write_float(
             img, join(FLAGS.outroot, view_folder_, 'rgba.png'), clip=True)
         # Record metadata
-        pose = converted_poses[i, :, :]
+        pose = converted_poses[i, :, :] # 3x5
         c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
         frame_meta = {
             'file_path': './%s/rgba' % view_folder_, 'rotation': 0,
@@ -222,7 +225,8 @@ def main(_):
     for i, alpha_path in enumerate(
             tqdm(alpha_paths, desc="Quantitative Views")):
         view_folder_ = view_folder.format(mode='test', i=test_i)
-        c2w = converted_poses[i * 10, :, :] # 4x4
+        pose = converted_poses[i * 10, :, :] # 3x5
+        c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
         # Record metadata
         frame_meta = {
             'file_path': '', 'rotation': 0, 'transform_matrix': c2w.tolist()}
@@ -263,44 +267,47 @@ def main(_):
     lp3_paths = xm.os.sortglob(
         join(FLAGS.their_qual_results_dir, 'img_est_003'), '*', ext='png')
 
-    # For each qualitative test view
-    for i in tqdm(
-            range(converted_test_poses.shape[0]), desc="Qualitative Views"):
-        view_folder_ = view_folder.format(mode='test', i=test_i)
-        c2w = converted_test_poses[i, :, :] # 4x4
-        # Record metadata
-        frame_meta = {
-            'file_path': '', 'rotation': 0, 'transform_matrix': c2w.tolist()}
-        test_meta['frames'].append(frame_meta)
-        # Write the nearest input to this test view folder
-        dist = np.linalg.norm(c2w[:3, 3] - converted_poses[:, :3, 3], axis=1)
-        nn_i = np.argmin(dist)
-        nn_img = imgs[nn_i, :, :, :]
-        xm.io.img.write_float(
-            nn_img, join(FLAGS.outroot, view_folder_, 'nn.png'), clip=True)
-        # Write this frame's metadata to the view folder
-        frame_meta = {
-            'cam_angle_x': cam_angle_x,
-            'cam_transform_mat': ','.join(str(x) for x in c2w.ravel()),
-            'envmap': '', 'envmap_inten': 0, 'imh': img.shape[0],
-            'imw': img.shape[1], 'scene': '', 'spp': 0, 'original_path': ''}
-        xm.io.json.write(
-            frame_meta, join(FLAGS.outroot, view_folder_, 'metadata.json'))
-        # Also copy over their results
-        alpha = xm.io.img.read(alpha_paths[i])
-        write_their_result(
-            lp0_paths[i], alpha,
-            join(FLAGS.outroot, view_folder_, 'rnr_lp0_pred.png'))
-        write_their_result(
-            lp1_paths[i], alpha,
-            join(FLAGS.outroot, view_folder_, 'rnr_lp1_pred.png'))
-        write_their_result(
-            lp2_paths[i], alpha,
-            join(FLAGS.outroot, view_folder_, 'rnr_lp2_pred.png'))
-        write_their_result(
-            lp3_paths[i], alpha,
-            join(FLAGS.outroot, view_folder_, 'rnr_lp3_pred.png'))
-        test_i += 1
+    if FLAGS.all_test_views:
+        # For each qualitative test view
+        for i in tqdm(
+                range(converted_test_poses.shape[0]), desc="Qualitative Views"):
+            view_folder_ = view_folder.format(mode='test', i=test_i)
+            c2w = converted_test_poses[i, :, :] # 4x4
+            # Record metadata
+            frame_meta = {
+                'file_path': '', 'rotation': 0,
+                'transform_matrix': c2w.tolist()}
+            test_meta['frames'].append(frame_meta)
+            # Write the nearest input to this test view folder
+            dist = np.linalg.norm(
+                c2w[:3, 3] - converted_poses[:, :3, 3], axis=1)
+            nn_i = np.argmin(dist)
+            nn_img = imgs[nn_i, :, :, :]
+            xm.io.img.write_float(
+                nn_img, join(FLAGS.outroot, view_folder_, 'nn.png'), clip=True)
+            # Write this frame's metadata to the view folder
+            frame_meta = {
+                'cam_angle_x': cam_angle_x,
+                'cam_transform_mat': ','.join(str(x) for x in c2w.ravel()),
+                'envmap': '', 'envmap_inten': 0, 'imh': img.shape[0],
+                'imw': img.shape[1], 'scene': '', 'spp': 0, 'original_path': ''}
+            xm.io.json.write(
+                frame_meta, join(FLAGS.outroot, view_folder_, 'metadata.json'))
+            # Also copy over their results
+            alpha = xm.io.img.read(alpha_paths[i])
+            write_their_result(
+                lp0_paths[i], alpha,
+                join(FLAGS.outroot, view_folder_, 'rnr_lp0_pred.png'))
+            write_their_result(
+                lp1_paths[i], alpha,
+                join(FLAGS.outroot, view_folder_, 'rnr_lp1_pred.png'))
+            write_their_result(
+                lp2_paths[i], alpha,
+                join(FLAGS.outroot, view_folder_, 'rnr_lp2_pred.png'))
+            write_their_result(
+                lp3_paths[i], alpha,
+                join(FLAGS.outroot, view_folder_, 'rnr_lp3_pred.png'))
+            test_i += 1
 
     # Write JSON
     xm.io.json.write(test_meta, test_json)

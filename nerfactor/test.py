@@ -120,11 +120,13 @@ def main(_):
     albedo_override = None
     if FLAGS.edit_albedo:
         # tgt_albedo = (0.913, 0.921, 0.925) # aluminium
-        tgt_albedo = (1, 0.843, 0) # gold
+        # tgt_albedo = (1, 0.843, 0) # gold
+        tgt_albedo = (0, 1, 0) # green
         albedo_override = tf.convert_to_tensor(tgt_albedo, dtype=tf.float32)
     brdf_z_override = None
     if FLAGS.edit_brdf:
-        tgt_brdf = 'gold-metallic-paint1'
+        # tgt_brdf = 'gold-metallic-paint1'
+        tgt_brdf = 'pearl-paint'
         tgt_brdf_z = model.brdf_model.latent_code.z[
             model.brdf_model.brdf_names.index(tgt_brdf), :]
         brdf_z_override = tf.convert_to_tensor(tgt_brdf_z, dtype=tf.float32)
