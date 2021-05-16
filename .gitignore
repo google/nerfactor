@@ -1,5 +1,9 @@
-private/
+backup/
 eval/
+data_gen/rnr_synth/
+data_gen/philip2019multi_real/
+private/
+
 *.swp
 condaenv.*.requirements.txt
 
