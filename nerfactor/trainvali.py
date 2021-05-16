@@ -269,7 +269,7 @@ def get_strategy():
     return strategy
 
 
-# Will be decorated into a tf.function, depending on whether in debug mode
+# May be decorated into a tf.function, depending on whether in debug mode
 def distributed_train_step(strategy, model, batch, optimizer, global_bs):
     assert model.trainable_registered, \
         "Register the trainable layers before using `trainable_variables`"

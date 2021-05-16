@@ -1,8 +1,10 @@
 backup/
 eval/
+private/
 data_gen/rnr_synth/
 data_gen/philip2019multi_real/
-private/
+nerfactor/models/oxholm.py
+nerfactor/config/oxholm.ini
 
 *.swp
 condaenv.*.requirements.txt

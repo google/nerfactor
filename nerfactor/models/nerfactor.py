@@ -90,7 +90,7 @@ class Model(ShapeModel):
         # (2) Light probes
         novel_probes = OrderedDict()
         test_envmap_dir = self.config.get('DEFAULT', 'test_envmap_dir')
-        for path in xm.os.sortglob(test_envmap_dir, '*.hdr'):
+        for path in xm.os.sortglob(test_envmap_dir, ext=('hdr', 'exr')):
             name = basename(path)[:-len('.hdr')]
             envmap = self._load_light(path)
             novel_probes[name] = envmap
@@ -286,8 +286,11 @@ class Model(ShapeModel):
             normal_jitter = tf.scatter_nd(ind, normal_jitter, (n, 3))
         if lvis_jitter is not None:
             lvis_jitter = tf.scatter_nd(ind, lvis_jitter, (n, l))
-        brdf_prop_jitter = tf.scatter_nd(ind, brdf_prop_jitter, (n, self.z_dim))
-        albedo_jitter = tf.scatter_nd(ind, albedo_jitter, (n, 3))
+        if brdf_prop_jitter is not None:
+            brdf_prop_jitter = tf.scatter_nd(
+                ind, brdf_prop_jitter, (n, self.z_dim))
+        if albedo_jitter is not None:
+            albedo_jitter = tf.scatter_nd(ind, albedo_jitter, (n, 3))
         # ------ Loss
         pred = {
             'rgb': rgb_pred, 'normal': normal_pred, 'lvis': lvis_pred,
