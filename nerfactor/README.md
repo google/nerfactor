@@ -138,7 +138,7 @@ else
 fi
 if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge || "$scene" == rnr ]]; then
     near='0.1'; far='2'
-elif [[ "$scene" == rnr_gt_shape ]]; then
+elif [[ "$scene" == rnr_gt-shape ]]; then
     near='4'; far='7'
 else
     near='2'; far='6'
@@ -165,12 +165,17 @@ if [[ "$scene" == rnr* ]]; then
 else
     test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
 fi
+if [[ "$scene" == rnr_gt-shape ]]; then
+    shape_mode='nerf'
+else
+    shape_mode='finetune'
+fi
 outroot="$proj_root/output/train/${scene}_$model"
-REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config="$model.ini" --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config="$model.ini" --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,shape_mode=$shape_mode,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # III. Simultaneous Relighting and View Synthesis (testing)
 ckpt="$outroot/lr5e-3/checkpoints/ckpt-10"
-if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge ]]; then
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge || "$scene" == rnr* ]]; then
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt"
 else
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt" --color_correct_albedo
