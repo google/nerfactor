@@ -5,6 +5,8 @@ data_gen/rnr_synth/
 data_gen/philip2019multi_real/
 nerfactor/models/oxholm.py
 nerfactor/config/oxholm.ini
+nerfactor/README_private.md
+nerfactor/data_gen/README_private.md
 
 *.swp
 condaenv.*.requirements.txt
