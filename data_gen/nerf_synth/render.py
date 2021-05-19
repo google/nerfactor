@@ -23,6 +23,9 @@ flags.DEFINE_integer('vali_first_n', 8, "")
 flags.DEFINE_float('light_inten', 3, "global scale for the light probe")
 flags.DEFINE_integer('res', 512, "resolution of the squre renders")
 flags.DEFINE_integer('spp', 128, "samples per pixel")
+flags.DEFINE_boolean(
+    'add_glossy_albedo', False,
+    "whether to add Blender's 'glossy color' to albedo")
 flags.DEFINE_string('outdir', '', "output directory")
 flags.DEFINE_boolean('overwrite', False, "")
 flags.DEFINE_boolean('debug', False, "")
@@ -212,16 +215,19 @@ def render_view(cam_transform_mat, cam_angle_x, outdir):
     albedo_png = join(outdir, 'albedo.png')
     if not exists(albedo_png):
         diffuse_color_exr = join(outdir, 'diffuse-color.exr')
-        # glossy_color_exr = join(args.outdir, 'glossy_color.exr')
         xm.blender.render.render_lighting_passes(
             diffuse_color_exr, cam=cam_obj, select='diffuse_color')
-        # xm.blender.render.render_lighting_passes(
-        #     glossy_color_exr, cam=cam_obj, select='glossy_color')
         diffuse_color = xm.io.exr.read(diffuse_color_exr)
-        # glossy_color = read_exr(glossy_color_exr)
-        albedo = diffuse_color # + glossy_color
+        if FLAGS.add_glossy_albedo:
+            glossy_color_exr = join(outdir, 'glossy-color.exr')
+            xm.blender.render.render_lighting_passes(
+                glossy_color_exr, cam=cam_obj, select='glossy_color')
+            glossy_color = xm.io.exr.read(glossy_color_exr)
+        else:
+            glossy_color = np.zero_like(diffuse_color)
+        albedo = diffuse_color + glossy_color
         albedo = np.dstack((albedo, alpha))
-        xm.io.img.write_arr(albedo, albedo_png)
+        xm.io.img.write_arr(albedo, albedo_png, clip=True)
 
     # Render normals ...
     normal_png = join(outdir, 'normal.png')

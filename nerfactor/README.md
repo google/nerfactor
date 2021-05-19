@@ -176,10 +176,11 @@ REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config="$m
 # III. Simultaneous Relighting and View Synthesis (testing)
 ckpt="$outroot/lr5e-3/checkpoints/ckpt-10"
 if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge || "$scene" == rnr* ]]; then
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt"
+    color_correct_albedo='false'
 else
-    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt" --color_correct_albedo
+    color_correct_albedo='true'
 fi
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt" --color_correct_albedo="$color_correct_albedo"
 ```
 
 Training and validation (II) will produce an HTML of the factorization results:
