@@ -14,21 +14,29 @@
 
 from os.path import join, basename
 from absl import app, flags
+import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
 
-from third_party.xiuminglib import xiuminglib as xm
 from nerfactor import datasets
 from nerfactor import models
 from nerfactor.util import logging as logutil, io as ioutil, \
     config as configutil
+from third_party.xiuminglib import xiuminglib as xm
+from third_party.turbo_colormap import turbo_colormap_data, interpolate_or_clip
 
 
 flags.DEFINE_string(
     'ckpt', '/path/to/ckpt-100', "path to checkpoint (prefix only)")
 flags.DEFINE_boolean('color_correct_albedo', False, "")
-flags.DEFINE_boolean('edit_albedo', False, "")
-flags.DEFINE_boolean('edit_brdf', False, "")
+flags.DEFINE_integer(
+    'sv_axis_i', 0, "along which axis we do spatially-varying edits")
+flags.DEFINE_float(
+    'sv_axis_min', -1.5, "axis minimum for spatially-varying edits")
+flags.DEFINE_float(
+    'sv_axis_max', 1.5, "axis maximum for spatially-varying edits")
+flags.DEFINE_string('tgt_albedo', None, "albedo edit name")
+flags.DEFINE_string('tgt_brdf', None, "BRDF edit name")
 flags.DEFINE_boolean('debug', False, "debug mode switch")
 FLAGS = flags.FLAGS
 
@@ -80,6 +88,50 @@ def compute_rgb_scales(alpha_thres=0.9):
     return opt_scale
 
 
+def get_albedo_override(xyz):
+    if FLAGS.tgt_albedo == 'aluminium':
+        tgt_albedo = (0.913, 0.921, 0.925)
+        return tf.convert_to_tensor(tgt_albedo, dtype=tf.float32)
+
+    if FLAGS.tgt_albedo == 'gold':
+        tgt_albedo = (1, 0.843, 0)
+        return tf.convert_to_tensor(tgt_albedo, dtype=tf.float32)
+
+    if FLAGS.tgt_albedo == 'green':
+        tgt_albedo = (0, 1, 0)
+        return tf.convert_to_tensor(tgt_albedo, dtype=tf.float32)
+
+    if FLAGS.tgt_albedo == 'rainbow':
+        rainbow = [
+            (0.58, 0, 0.83), (0.29, 0, 0.51), (0, 0, 1), (0, 1, 0), (1, 1, 0),
+            (1, 0.5, 0), (1, 0, 0)]
+        axis = xyz[:, FLAGS.sv_axis_i]
+        band_width = (FLAGS.sv_axis_max - FLAGS.sv_axis_min) / len(rainbow)
+        tgt_albedo = tf.zeros_like(xyz)
+        for i, color in enumerate(rainbow):
+            cond1 = axis >= FLAGS.sv_axis_min + i * band_width
+            cond2 = axis < FLAGS.sv_axis_min + (i + 1) * band_width
+            in_band = tf.logical_and(cond1, cond2)
+            ind = tf.where(in_band)
+            color = tf.convert_to_tensor(color, dtype=tf.float32)
+            color_rep = tf.tile(color[None, :], (tf.shape(ind)[0], 1))
+            tgt_albedo = tf.tensor_scatter_nd_update(tgt_albedo, ind, color_rep)
+        return tgt_albedo
+
+    if FLAGS.tgt_albedo == 'turbo':
+        axis = xyz[:, FLAGS.sv_axis_i].numpy()
+        axis_normalized = (axis - FLAGS.sv_axis_min) / (
+            FLAGS.sv_axis_max - FLAGS.sv_axis_min)
+        tgt_albedo = []
+        for x in axis_normalized:
+            color = interpolate_or_clip(turbo_colormap_data, x)
+            tgt_albedo.append(color)
+        tgt_albedo = np.array(tgt_albedo)
+        return tf.convert_to_tensor(tgt_albedo, dtype=tf.float32)
+
+    raise NotImplementedError("Target albedo: %s" % FLAGS.tgt_albedo)
+
+
 def main(_):
     if FLAGS.debug:
         logger.warn("Debug mode: on")
@@ -90,10 +142,10 @@ def main(_):
 
     # Output directory
     outroot = join(config_ini[:-4], 'vis_test', basename(FLAGS.ckpt))
-    if FLAGS.edit_albedo:
-        outroot = outroot.rstrip('/') + '_edit-albedo'
-    if FLAGS.edit_brdf:
-        outroot = outroot.rstrip('/') + '_edit-brdf'
+    if FLAGS.tgt_albedo:
+        outroot = outroot.rstrip('/') + '_%s' % FLAGS.tgt_albedo
+    if FLAGS.tgt_brdf:
+        outroot = outroot.rstrip('/') + '_%s' % FLAGS.tgt_brdf
 
     # Make dataset
     logger.info("Making the actual data pipeline")
@@ -113,22 +165,14 @@ def main(_):
 
     # Optionally, color-correct the albedo
     albedo_scales = None
-    if (not FLAGS.edit_albedo) and FLAGS.color_correct_albedo:
+    if (not FLAGS.tgt_albedo) and FLAGS.color_correct_albedo:
         albedo_scales = compute_rgb_scales()
 
-    # Optionally, edit albedo and BRDF
-    albedo_override = None
-    if FLAGS.edit_albedo:
-        # tgt_albedo = (0.913, 0.921, 0.925) # aluminium
-        # tgt_albedo = (1, 0.843, 0) # gold
-        tgt_albedo = (0, 1, 0) # green
-        albedo_override = tf.convert_to_tensor(tgt_albedo, dtype=tf.float32)
+    # Optionally, edit BRDF
     brdf_z_override = None
-    if FLAGS.edit_brdf:
-        # tgt_brdf = 'gold-metallic-paint1'
-        tgt_brdf = 'pearl-paint'
+    if FLAGS.tgt_brdf:
         tgt_brdf_z = model.brdf_model.latent_code.z[
-            model.brdf_model.brdf_names.index(tgt_brdf), :]
+            model.brdf_model.brdf_names.index(FLAGS.tgt_brdf), :]
         brdf_z_override = tf.convert_to_tensor(tgt_brdf_z, dtype=tf.float32)
 
     # For all test views
@@ -136,6 +180,11 @@ def main(_):
     for batch_i, batch in enumerate(
             tqdm(datapipe, desc="Inferring Views", total=n_views)):
         relight_olat = batch_i == n_views - 1 # only for the final view
+        # Optionally, edit (spatially-varying) albedo
+        albedo_override = None
+        if FLAGS.tgt_albedo:
+            _, _, _, _, _, _, xyz, _, _ = batch
+            albedo_override = get_albedo_override(xyz)
         # Inference
         _, _, _, to_vis = model.call(
             batch, mode='test', relight_olat=relight_olat, relight_probes=True,

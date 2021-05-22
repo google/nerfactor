@@ -238,8 +238,13 @@ class Model(ShapeModel):
         if albedo_scales is not None:
             albedo = tf.reshape(albedo_scales, (1, 3)) * albedo
         if albedo_override is not None:
-            albedo_override = tf.reshape(albedo_override, (1, 3))
-            albedo = tf.tile(albedo_override, (tf.shape(albedo)[0], 1))
+            if tf.rank(albedo_override) == 1:
+                albedo = tf.tile(
+                    albedo_override[None, :], (tf.shape(albedo)[0], 1))
+            else:
+                # If not a global override, it must be of the same size as the
+                # unmasked xyz, so we mask it here
+                albedo = tf.boolean_mask(albedo_override, mask)
         # ------ BRDFs
         if self.pred_brdf:
             brdf_prop = self._pred_brdf_at(xyz)
