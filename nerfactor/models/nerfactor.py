@@ -26,12 +26,9 @@ from nerfactor.models.shape import Model as ShapeModel
 from nerfactor.models.brdf import Model as BRDFModel
 from nerfactor.networks import mlp
 from nerfactor.networks.embedder import Embedder
-from nerfactor.util import logging as logutil, config as configutil, \
+from nerfactor.util import vis as visutil, config as configutil, \
     io as ioutil, tensor as tutil, light as lightutil, img as imgutil, \
     math as mathutil, geom as geomutil
-
-
-logger = logutil.Logger(loggee="models/nerfactor")
 
 
 class Model(ShapeModel):
@@ -816,101 +813,41 @@ class Model(ShapeModel):
         html_save(out_html)
 
     def _compile_into_video(self, batch_dirs, out_mp4, fps=12):
-        batch_dirs = sorted(
-            batch_dirs) # assuming batch directory order is the right view order
+        data_root = self.config.get('DEFAULT', 'data_root')
+        # Assume batch directory order is the right view order
+        batch_dirs = sorted(batch_dirs)
         if self.debug:
             batch_dirs = batch_dirs[:10]
         # Tonemap and visualize all lighting conditions used
         orig_light_uint = lightutil.vis_light(self.light, h=self.embed_light_h)
-
-        def make_frame(path_dict, light=None, task='viewsyn'):
-            # Load predictions
-            nn = xm.io.img.load(path_dict['nn'])
-            albedo = xm.io.img.load(path_dict['albedo'])
-            lvis = xm.io.img.load(path_dict['lvis'])
-            normal = xm.io.img.load(path_dict['normal'])
-            rgb = xm.io.img.load(path_dict['rgb'])
-            brdf = xm.io.img.load(path_dict['brdf'])
-            hw = rgb.shape[:2]
-            # Optionally, embed the light used to right bottom corner of render
-            if light is not None:
-                frame_width = int(max(1 / 16 * light.shape[0], 1))
-                imgutil.frame_image(light, rgb=(1, 1, 1), width=frame_width)
-                light_vis_h = int(32 / 256 * hw[0]) # scale light probe size
-                light = xm.img.resize(light, new_h=light_vis_h)
-                rgb[:light.shape[0], -light.shape[1]:] = light
-            # Put labels
-            put_text_kwargs = {
-                'label_top_left_xy': (
-                    int(self.put_text_param['text_loc_ratio'] * hw[1]),
-                    int(self.put_text_param['text_loc_ratio'] * hw[0])),
-                'font_size': int(
-                    self.put_text_param['text_size_ratio'] * hw[0]),
-                'font_color': (0, 0, 0) if self.white_bg else (1, 1, 1),
-                'font_ttf': self.put_text_param['font_path']}
-            nn = xm.vis.text.put_text(nn, "Nearest Input", **put_text_kwargs)
-            albedo = xm.vis.text.put_text(albedo, "Albedo", **put_text_kwargs)
-            lvis_label = "Light Visibility"
-            if task in ('viewsyn', 'simul'):
-                lvis_label += " (mean)"
-            lvis = xm.vis.text.put_text(lvis, lvis_label, **put_text_kwargs)
-            normal = xm.vis.text.put_text(normal, "Normals", **put_text_kwargs)
-            rgb = xm.vis.text.put_text(rgb, "Rendering", **put_text_kwargs)
-            brdf = xm.vis.text.put_text(brdf, "BRDF", **put_text_kwargs)
-            # Make collage
-            frame_top = imgutil.hconcat((normal, lvis, nn))
-            frame_bottom = imgutil.hconcat((brdf, albedo, rgb))
-            frame = imgutil.vconcat((frame_top, frame_bottom))
-            return frame
-
-        def get_nearest_input(batch_dir):
-            metadata_path = join(batch_dir, 'metadata.json')
-            metadata = ioutil.read_json(metadata_path)
-            id_ = metadata['id']
-            data_root = self.config.get('DEFAULT', 'data_root')
-            nearest_input_path = join(data_root, id_, 'nn.png')
-            return nearest_input_path
-
-        # ------ View synthesis
         frames = []
+        # View synthesis
         for batch_dir in tqdm(batch_dirs, desc="View Synthesis"):
-            paths = {
-                'nn': get_nearest_input(batch_dir),
-                'albedo': join(batch_dir, 'pred_albedo.png'),
-                'lvis': join(batch_dir, 'pred_lvis.png'), # mean
-                'normal': join(batch_dir, 'pred_normal.png'),
-                'rgb': join(batch_dir, 'pred_rgb.png'),
-                'alpha': join(batch_dir, 'gt_alpha.png'),
-                'brdf': join(batch_dir, 'pred_brdf.png')}
-            if not ioutil.all_exist(paths):
-                logger.warn(
-                    "Skipping because of missing files:\n\t%s", batch_dir)
-                continue
-            frame = make_frame(paths, light=orig_light_uint, task='viewsyn')
-            frames.append(frame)
-        # ------ Relighting
+            frame = visutil.make_frame(
+                batch_dir,
+                (('normal', 'lvis', 'nn'), ('brdf', 'albedo', 'rgb')),
+                data_root=data_root, put_text_param=self.put_text_param,
+                rgb_embed_light=orig_light_uint)
+            # To guard against missing buffer, which makes the frame None
+            if frame is not None:
+                frames.append(frame)
+        # Relighting
         relight_view_dir = batch_dirs[-1] # fixed to the final view
         lvis_paths = xm.os.sortglob(relight_view_dir, 'pred_lvis_olat*.png')
         for lvis_path in tqdm(lvis_paths, desc="Final View, OLAT"):
             olat_id = basename(lvis_path)[len('pred_lvis_olat_'):-len('.png')]
             if self.debug and (olat_id not in self.novel_probes_uint):
                 continue
-            rgb_path = join(relight_view_dir, 'pred_rgb_olat_%s.png' % olat_id)
-            paths = {
-                'nn': get_nearest_input(relight_view_dir),
-                'albedo': join(relight_view_dir, 'pred_albedo.png'),
-                'lvis': lvis_path, # per-light
-                'normal': join(relight_view_dir, 'pred_normal.png'),
-                'rgb': rgb_path,
-                'alpha': join(relight_view_dir, 'gt_alpha.png'),
-                'brdf': join(relight_view_dir, 'pred_brdf.png')}
-            if not ioutil.all_exist(paths):
-                logger.warn("Skipping because of missing files: %s", olat_id)
-                continue
-            light_used = self.novel_olat_uint[olat_id]
-            frame = make_frame(paths, light=light_used, task='relight')
-            frames.append(frame)
-        # ------ Simultaneous
+            frame = visutil.make_frame(
+                relight_view_dir,
+                (('normal', f'lvis_olat_{olat_id}', 'nn'),
+                 ('brdf', 'albedo', f'rgb_olat_{olat_id}')),
+                data_root=data_root, put_text_param=self.put_text_param,
+                rgb_embed_light=self.novel_olat_uint[olat_id])
+            # To guard against missing buffer, which makes the frame None
+            if frame is not None:
+                frames.append(frame)
+        # Simultaneous
         envmap_names = list(self.novel_probes.keys())
         n_envmaps = len(envmap_names)
         batch_dirs_roundtrip = list(reversed(batch_dirs)) + batch_dirs
@@ -920,22 +857,15 @@ class Model(ShapeModel):
         for view_i, batch_dir in enumerate(
                 tqdm(batch_dirs_roundtrip, desc="View Roundtrip, IBL")):
             envmap_name = envmap_names[map_i]
-            rgb_path = join(batch_dir, 'pred_rgb_probes_%s.png' % envmap_name)
-            paths = {
-                'nn': get_nearest_input(batch_dir),
-                'albedo': join(batch_dir, 'pred_albedo.png'),
-                'lvis': join(batch_dir, 'pred_lvis.png'), # mean
-                'normal': join(batch_dir, 'pred_normal.png'),
-                'rgb': rgb_path,
-                'alpha': join(batch_dir, 'gt_alpha.png'),
-                'brdf': join(batch_dir, 'pred_brdf.png')}
-            if not ioutil.all_exist(paths):
-                logger.warn(
-                    "Skipping because of missing files:\n\t%s", batch_dir)
-                continue
-            light_used = self.novel_probes_uint[envmap_name]
-            frame = make_frame(paths, light=light_used, task='simul')
-            frames.append(frame)
+            frame = visutil.make_frame(
+                batch_dir,
+                (('normal', 'lvis', 'nn'),
+                 ('brdf', 'albedo', f'rgb_probes_{envmap_name}')),
+                data_root=data_root, put_text_param=self.put_text_param,
+                rgb_embed_light=self.novel_probes_uint[envmap_name])
+            # To guard against missing buffer, which makes the frame None
+            if frame is not None:
+                frames.append(frame)
             # Time to switch to the next map?
             if (view_i + 1) > n_views_per_envmap * (map_i + 1):
                 map_i += 1

@@ -14,10 +14,11 @@
 
 # pylint: disable=invalid-unary-operand-type
 
+from os.path import basename
 import tensorflow as tf
 
 from third_party.xiuminglib import xiuminglib as xm
-from . import logging as logutil, img as imgutil
+from . import logging as logutil, img as imgutil, tensor as tutil
 
 
 logger = logutil.Logger(loggee="util/light")
@@ -43,3 +44,23 @@ def vis_light(light_probe, outpath=None, h=None):
         xm.io.img.write_img(img_uint, outpath)
 
     return img_uint
+
+
+def vis_hdr_lights(lights_dir, vis_h=64):
+    vis = {}
+    for path in xm.os.sortglob(lights_dir, ext='hdr'):
+        name = basename(path)[:-len('.hdr')]
+        light = xm.io.hdr.read(path)
+        light = vis_light(light, h=vis_h)
+        vis[name] = light
+    return vis
+
+
+def vis_olat_lights(orig_h=16, vis_h=64):
+    vis = {}
+    for i in range(orig_h):
+        for j in range(2 * orig_h):
+            one_hot = tutil.one_hot_img(orig_h, 2 * orig_h, 3, i, j)
+            light = vis_light(one_hot, h=vis_h)
+            vis['%04d-%04d' % (i, j)] = light
+    return vis
