@@ -405,12 +405,12 @@ class Model(BaseModel):
             outpath = outpref + '.html'
             self._compile_into_webpage(batch_vis_dirs, outpath)
         else:
-            outpath = outpref + '.webm'
+            outpath = outpref + '.mp4'
             self._compile_into_video(batch_vis_dirs, outpath, fps=fps)
         view_at = viewer_prefix + outpath
         return view_at # to be logged into TensorBoard
 
-    def _compile_into_video(self, batch_dirs, out_webm, fps=12):
+    def _compile_into_video(self, batch_dirs, out_mp4, fps=12):
         data_root = self.config.get('DEFAULT', 'data_root')
         # Load frames
         frames = {}
@@ -443,7 +443,7 @@ class Model(BaseModel):
             frames[id_] = frame
         # Make video
         frames_sorted = [frames[k] for k in sorted(frames)]
-        ioutil.write_video(frames_sorted, out_webm, fps=fps)
+        xm.vis.video.make_video(frames_sorted, fps=fps, outpath=out_mp4)
 
     def _compile_into_webpage(self, batch_dirs, out_html):
         rows, caps, types = [], [], []

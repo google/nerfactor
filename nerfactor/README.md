@@ -72,6 +72,10 @@ the end of the run.
     fi
     outroot="$proj_root/output/train/${scene}_nerf"
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='nerf.ini' --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,lr=$lr,outroot=$outroot,viewer_prefix=$viewer_prefix"
+
+    # Optionally, render the test trajectory with the trained NeRF
+    ckpt="$outroot/lr$lr/checkpoints/ckpt-20"
+    REPO_DIR="$repo_dir" "$repo_dir/nerfactor/nerf_test_run.sh" "$gpus" --ckpt="$ckpt"
     ```
    Check the quality of this NeRF geometry by inspecting the visualization HTML
    for the alpha and normal maps. You might need to re-run this with another

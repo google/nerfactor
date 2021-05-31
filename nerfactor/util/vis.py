@@ -8,7 +8,7 @@ logger = logutil.Logger(loggee="util/vis")
 
 
 def make_frame(
-        view_dir, layout, put_text_param=None, data_root=None,
+        view_dir, layout, put_text=True, put_text_param=None, data_root=None,
         rgb_embed_light=None):
     if put_text_param is None:
         put_text_param = {}
@@ -61,31 +61,33 @@ def make_frame(
             # NN already has embedded light
 
             # Put label
-            put_text_kwargs = {
-                'label_top_left_xy': (
-                    int(put_text_param['text_loc_ratio'] * hw[1]),
-                    int(put_text_param['text_loc_ratio'] * hw[0])),
-                'font_size': int(
-                    put_text_param['text_size_ratio'] * hw[0]),
-                'font_color': (1, 1, 1) if is_render or is_nn else (0, 0, 0),
-                'font_ttf': put_text_param['font_path']}
-            if is_nn:
-                label = "Nearest Input"
-            elif is_render:
-                label = "Rendering"
-            elif name in ('normal', 'normals'):
-                label = "Normals"
-            elif name == 'lvis':
-                label = "Visibility (mean)"
-            elif name.startswith('lvis_olat_'):
-                label = "Visibility"
-            elif name == 'brdf':
-                label = "BRDF"
-            elif name == 'albedo':
-                label = "Albedo"
-            else:
-                raise NotImplementedError(name)
-            img = xm.vis.text.put_text(img, label, **put_text_kwargs)
+            if put_text:
+                font_color = (1, 1, 1) if is_render or is_nn else (0, 0, 0)
+                put_text_kwargs = {
+                    'label_top_left_xy': (
+                        int(put_text_param['text_loc_ratio'] * hw[1]),
+                        int(put_text_param['text_loc_ratio'] * hw[0])),
+                    'font_size': int(
+                        put_text_param['text_size_ratio'] * hw[0]),
+                    'font_color': font_color,
+                    'font_ttf': put_text_param['font_path']}
+                if is_nn:
+                    label = "Nearest Input"
+                elif is_render:
+                    label = "Rendering"
+                elif name in ('normal', 'normals'):
+                    label = "Normals"
+                elif name == 'lvis':
+                    label = "Visibility (mean)"
+                elif name.startswith('lvis_olat_'):
+                    label = "Visibility"
+                elif name == 'brdf':
+                    label = "BRDF"
+                elif name == 'albedo':
+                    label = "Albedo"
+                else:
+                    raise NotImplementedError(name)
+                img = xm.vis.text.put_text(img, label, **put_text_kwargs)
 
             frame[-1].append(img)
 
