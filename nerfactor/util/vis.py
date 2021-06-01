@@ -48,6 +48,7 @@ def make_frame(
                 return None
 
             img = xm.io.img.load(path)
+            img = img[:, :, :3] # discards alpha
             hw = img.shape[:2]
 
             # Optionally, embed the light used into right top corner of render
@@ -94,7 +95,10 @@ def make_frame(
     # Make collage
     rows = []
     for row in frame:
-        rows.append(imgutil.hconcat(row))
+        try:
+            rows.append(imgutil.hconcat(row))
+        except:
+            from IPython import embed; embed()
     frame = imgutil.vconcat(rows)
 
     return frame
