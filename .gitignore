@@ -2,6 +2,9 @@ backup/
 eval/
 private/
 
+brdf/microfacet/render.py
+brdf/microfacet/render_run.sh
+
 data_gen/README_private.md
 data_gen/rnr_synth/
 data_gen/philip2019multi_real/
@@ -9,8 +12,7 @@ data_gen/philip2019multi_real/
 nerfactor/README_private.md
 nerfactor/models/oxholm.py
 nerfactor/config/oxholm.ini
-nerfactor/brdf/microfacet/render.py
-nerfactor/brdf/microfacet/render_run.sh
+
 
 *.swp
 condaenv.*.requirements.txt
