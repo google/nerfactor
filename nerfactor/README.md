@@ -9,10 +9,10 @@ files, from which the pipeline parses arguments. The full NeRFactor model is
 specified in `models/nerfactor.py`, and the main data loader is specified in
 `datasets/nerf_shape.py`.
 
-Given multi-view, posed images of the scene and the MERL BRDF dataset, we (1)
-first learn data-drive BRDF priors, (2) distill NeRF's (noisy) geometry so
-that we can refine it, and finally (3) jointly optimize for the shape,
-reflectance, and illumination.
+Given multi-view images of the scene as well as their camera poses and
+the MERL BRDF dataset, we (1) first learn data-drive BRDF priors, (2) distill
+NeRF's (noisy) geometry so that we can refine it, and finally (3) jointly
+optimize the shape, reflectance, and illumination.
 
 
 ## Visualization
@@ -23,8 +23,10 @@ but for all of them, you can visualize the training and validation losses with:
 tensorboard --logdir="$outroot" --bind_all
 ```
 and find handy links to the visualization webpages under the "TEXT" tab
-in TensorBoard. For testing, the link to the compiled video will be printed at
-the end of the run.
+in TensorBoard.
+
+For testing, the link to the compiled video will be printed at the end of the
+run.
 
 
 ## Preparation
@@ -117,13 +119,17 @@ the end of the run.
     mlp_chunk='375000' # bump this up until GPU gets OOM for faster computation
     REPO_DIR="$repo_dir" "$repo_dir/nerfactor/geometry_from_nerf_run.sh" "$gpus" --data_root="$data_root" --trained_nerf="$trained_nerf" --out_root="$out_root" --imh="$imh" --scene_bbox="$scene_bbox" --occu_thres="$occu_thres" --mlp_chunk="$mlp_chunk"
     ```
+   For portability, this step runs sequentially, processing one view after
+   another. If your infrastructure supports distributing jobs easily over
+   multiple GPUs, you should consider having one GPU process one view to
+   parallelize all views.
 
 
 ## Training, Validation, and Testing
 
 Pre-train geometry MLPs (pre-training), jointly optimize shape, reflectance,
 and illumination (training and validation), and finally perform simultaneous
-relighting and view synthesis results (testing):
+relighting and view synthesis (testing):
 ```bash
 scene='hotdog_2163'
 gpus='0'
@@ -201,5 +207,5 @@ under novel lighting conditions.
   the pipeline, insert breakpoints there, and debug.
 * For easier and faster debugging, consider turning on `debug`. For instance,
   with this flag on, `trainvali.py` will NOT decorate the main training step
-  with `@tf.function` (easier) and only load a single datapoint each epoch
-  (faster).
+  with `@tf.function` ("easier") and only load a single datapoint each epoch
+  ("faster").

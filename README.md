@@ -29,8 +29,7 @@ This is not an officially supported Google product.
     ```
 
 Tips:
-* You can find the TensorFlow version, cuDNN version, and CUDA version in
-  `environment.yml`.
+* You can find the TensorFlow, cuDNN, and CUDA versions in `environment.yml`.
 * The IPython dependency in `environment.yml` is for `IPython.embed()` alone.
   If you are not using that to insert breakpoints during debugging, you can
   take it out (it should not hurt to just leave it there).
@@ -38,7 +37,7 @@ Tips:
 
 ## Data
 
-If you are using our data, see "Downloads" on the
+If you are using our data, see the "Downloads" section of the
 [project page](http://people.csail.mit.edu/xiuming/projects/nerfactor/).
 
 If you are BYOD (bringing your own data), go to [`data_gen/`](./data_gen) to
