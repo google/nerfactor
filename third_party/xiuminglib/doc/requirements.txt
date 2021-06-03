@@ -1,0 +1,8 @@
+# This is for online document building only.
+# See environment.yml or the documentation for the actual dependencies.
+
+numpy
+scipy
+matplotlib==2.0.2
+pillow
+tqdm
