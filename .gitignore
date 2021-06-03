@@ -12,6 +12,7 @@ data_gen/philip2019multi_real/
 nerfactor/README_private.md
 nerfactor/models/oxholm.py
 nerfactor/config/oxholm.ini
+nerfactor/debug/num_stability.py
 
 
 *.swp

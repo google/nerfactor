@@ -14,18 +14,14 @@
 
 from os.path import join, basename, dirname
 import numpy as np
-from tqdm import tqdm
-
-import tensorflow as tf
-tf.compat.v1.enable_eager_execution()
-
 from absl import app, flags
+from tqdm import tqdm
+import tensorflow as tf
 
-from google3.pyglib import gfile
-from google3.experimental.users.xiuming.sim.sim import datasets, models
-from google3.experimental.users.xiuming.sim.sim.util import io as ioutil, \
-    logging as logutil, math as mathutil, geom as geomutil
-from google3.experimental.users.xiuming.xiuminglib import xiuminglib as xm
+from nerfactor import datasets, models
+from nerfactor.util import io as ioutil, logging as logutil, \
+    math as mathutil, geom as geomutil
+from third_party.xiuminglib import xiuminglib as xm
 
 
 flags.DEFINE_string('config_ini', '', "path to configuration file")
