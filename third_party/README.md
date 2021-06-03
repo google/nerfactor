@@ -20,4 +20,5 @@ The changes are minor:
 
 This is a release of [xiuminglib](https://github.com/xiumingzhang/xiuminglib)
 that was used in NeRFactor. Make sure to use this release rather than the head
-of [xiuminglib](https://github.com/xiumingzhang/xiuminglib).
+of [xiuminglib](https://github.com/xiumingzhang/xiuminglib), which may no longer
+be compatible with this project.

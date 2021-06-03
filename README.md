@@ -1,11 +1,13 @@
 # NeRFactor
 
-[[Project]](http://nerfactor.csail.mit.edu/)
+[[Paper]]()
+[[Video]](https://www.youtube.com/watch?v=UUVSPJlwhPg)
+[[Project]](http://people.csail.mit.edu/xiuming/projects/nerfactor/)
 
-![teaser](assets/teaser.png)
+![teaser](assets/teaser.jpg)
 
 This is the authors' code release for:
-> **Neural Factorization of Shape and Reflectance under an Unknown Illumination**  
+> **NeRFactor: Neural Factorization of Shape and Reflectance Under an Unknown Illumination**  
 > Xiuming Zhang, Pratul P. Srinivasan, Boyang Deng, Paul Debevec, William T. Freeman, Jonathan T. Barron  
 > **arXiv**
 
@@ -36,7 +38,8 @@ Tips:
 
 ## Data
 
-If you are using our data, TODO: download instructions
+If you are using our data, see "Downloads" on the
+[project page](http://people.csail.mit.edu/xiuming/projects/nerfactor/).
 
 If you are BYOD (bringing your own data), go to [`data_gen/`](./data_gen) to
 either render your own synthetic data or process your real captures.
@@ -57,4 +60,4 @@ reader. Otherwise, email [Xiuming Zhang](http://people.csail.mit.edu/xiuming).
 
 ## Changelog
 
-* TODO/TODO/2021: Initial release.
+* 06/01/2021: Initial release.

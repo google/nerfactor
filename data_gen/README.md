@@ -11,7 +11,7 @@ This folder contains code and instructions for:
 
 1. Download the MERL BRDF dataset:
     ```bash
-    wget
+    wget TODO
     ```
 
 1. Convert the dataset into our format:

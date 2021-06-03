@@ -1,4 +1,4 @@
-name: nerfactor24
+name: nerfactor
 channels:
     - conda-forge
     - anaconda
