@@ -9,10 +9,9 @@ This folder contains code and instructions for:
 
 ## Converting the MERL Binary BRDFs Into a TensorFlow Dataset
 
-1. Download the MERL BRDF dataset:
-    ```bash
-    wget TODO
-    ```
+1. Download
+   [the MERL BRDF dataset](https://cdfg.csail.mit.edu/wojciech/brdfdatabase)
+   to `$proj_root/data/brdf_merl/`.
 
 1. Convert the dataset into our format:
     ```bash
