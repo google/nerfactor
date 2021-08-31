@@ -1,6 +1,6 @@
 # NeRFactor
 
-[[Paper]]()
+[[Paper]](https://arxiv.org/pdf/2106.01970.pdf)
 [[Video]](https://www.youtube.com/watch?v=UUVSPJlwhPg)
 [[Project]](http://people.csail.mit.edu/xiuming/projects/nerfactor/)
 
@@ -9,7 +9,7 @@
 This is the authors' code release for:
 > **NeRFactor: Neural Factorization of Shape and Reflectance Under an Unknown Illumination**  
 > Xiuming Zhang, Pratul P. Srinivasan, Boyang Deng, Paul Debevec, William T. Freeman, Jonathan T. Barron  
-> **arXiv**
+> **TOG 2021 (Proc. SIGGRAPH Asia)**
 
 This is not an officially supported Google product.
 
@@ -40,7 +40,7 @@ Tips:
 If you are using our data, see the "Downloads" section of the
 [project page](http://people.csail.mit.edu/xiuming/projects/nerfactor/).
 
-If you are BYOD (bringing your own data), go to [`data_gen/`](./data_gen) to
+If you are BYOD'ing (bringing your own data), go to [`data_gen/`](./data_gen) to
 either render your own synthetic data or process your real captures.
 
 
@@ -57,6 +57,16 @@ For questions, please also consider opening an issue as it may benefit future
 reader. Otherwise, email [Xiuming Zhang](http://people.csail.mit.edu/xiuming).
 
 
+## Acknowledgments
+
+This repository builds upon or draws inspirations from:
+* [this TOG 2015 code release](https://brdf.compute.dtu.dk/),
+* [the NeRF repository](https://github.com/bmild/nerf), and
+* [the pixelNeRF repository](https://github.com/sxyu/pixel-nerf).
+We thank the authors for making their code publicly available.
+
+
 ## Changelog
 
+* 09/01/2021: Updates related to SIGGRAPH Asia revision.
 * 06/01/2021: Initial release.
