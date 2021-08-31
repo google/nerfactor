@@ -57,12 +57,14 @@ run.
     repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
-    if [[ "$scene" == chichen || "$scene" == stonehenge ]]; then
+    if [[ "$scene" == scan* ]]; then
+        # DTU scenes
         imh='256'
     else
         imh='512'
     fi
-    if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge || "$scene" == rnr ]]; then
+    if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == scan* ]]; then
+        # Real scenes: NeRF & DTU
         near='0.1'; far='2'
     else
         near='2'; far='6'
@@ -91,7 +93,8 @@ run.
     repo_dir="$proj_root/code/nerfactor"
     viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
     data_root="$proj_root/data/selected/$scene"
-    if [[ "$scene" == chichen || "$scene" == stonehenge ]]; then
+    if [[ "$scene" == scan* ]]; then
+        # DTU scenes
         imh='256'
     else
         imh='512'
@@ -102,16 +105,15 @@ run.
         lr='5e-4'
     fi
     trained_nerf="$proj_root/output/train/${scene}_nerf/lr$lr"
-    if [[ "$scene" == pinecone* || "$scene" == stonehenge ]]; then
+    if [[ "$scene" == pinecone* || "$scene" == scan* ]]; then
+        # pinecone and DTU scenes
         occu_thres='0.5'
         scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'
-    elif [[ "$scene" == chichen ]]; then
-        occu_thres='0.9'
-        scene_bbox='-0.5,0.5,-0.5,0.5,-0.5,0.5'
     elif [[ "$scene" == vasedeck* ]]; then
         occu_thres='0.5'
         scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'
     else
+        # We don't need to bound the synthetic scenes
         occu_thres='0.5'
         scene_bbox=''
     fi
@@ -141,19 +143,20 @@ viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 
 # I. Shape Pre-Training
 data_root="$proj_root/data/selected/$scene"
-if [[ "$scene" == chichen || "$scene" == stonehenge ]]; then
+if [[ "$scene" == scan* ]]; then
+    # DTU scenes
     imh='256'
 else
     imh='512'
 fi
-if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge || "$scene" == rnr ]]; then
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == scan* ]]; then
+    # Real scenes: NeRF & DTU
     near='0.1'; far='2'
-elif [[ "$scene" == rnr_gt-shape ]]; then
-    near='4'; far='7'
 else
     near='2'; far='6'
 fi
-if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge ]]; then
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == scan* ]]; then
+    # Real scenes: NeRF & DTU
     use_nerf_alpha='True'
 else
     use_nerf_alpha='False'
@@ -165,27 +168,21 @@ REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='sh
 # II. Joint Optimization (training and validation)
 shape_ckpt="$shape_outdir/lr1e-2/checkpoints/ckpt-2"
 brdf_ckpt="$proj_root/output/train/merl/lr1e-2/checkpoints/ckpt-50"
-if [[ "$scene" == pinecone || "$scene" == vasedeck ]]; then
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == scan* ]]; then
+    # Real scenes: NeRF & DTU
     xyz_jitter_std=0.001
 else
     xyz_jitter_std=0.01
 fi
-if [[ "$scene" == rnr* ]]; then
-    test_envmap_dir="$proj_root/data/rnr/material_sphere/light_probe"
-else
-    test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
-fi
-if [[ "$scene" == rnr_gt-shape ]]; then
-    shape_mode='nerf'
-else
-    shape_mode='finetune'
-fi
+test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
+shape_mode='finetune'
 outroot="$proj_root/output/train/${scene}_$model"
 REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config="$model.ini" --config_override="data_root=$data_root,imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,data_nerf_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,shape_mode=$shape_mode,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # III. Simultaneous Relighting and View Synthesis (testing)
 ckpt="$outroot/lr5e-3/checkpoints/ckpt-10"
-if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == chichen || "$scene" == stonehenge || "$scene" == rnr* ]]; then
+if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == scan* ]]; then
+    # Real scenes: NeRF & DTU
     color_correct_albedo='false'
 else
     color_correct_albedo='true'
