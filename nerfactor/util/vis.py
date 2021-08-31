@@ -48,6 +48,8 @@ def make_frame(
                 return None
 
             img = xm.io.img.load(path)
+            if img.ndim == 2:
+                img = np.dstack([img] * 3)
             img = img[:, :, :3] # discards alpha
             hw = img.shape[:2]
 
