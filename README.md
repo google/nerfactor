@@ -59,11 +59,10 @@ reader. Otherwise, email [Xiuming Zhang](http://people.csail.mit.edu/xiuming).
 
 ## Acknowledgments
 
-This repository builds upon or draws inspirations from:
-* [this TOG 2015 code release](https://brdf.compute.dtu.dk/),
-* [the NeRF repository](https://github.com/bmild/nerf), and
-* [the pixelNeRF repository](https://github.com/sxyu/pixel-nerf).
-
+This repository builds upon or draws inspirations from
+[this TOG 2015 code release](https://brdf.compute.dtu.dk/),
+[the NeRF repository](https://github.com/bmild/nerf), and
+[the pixelNeRF repository](https://github.com/sxyu/pixel-nerf).
 We thank the authors for making their code publicly available.
 
 
