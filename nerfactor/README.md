@@ -105,16 +105,19 @@ run.
         lr='5e-4'
     fi
     trained_nerf="$proj_root/output/train/${scene}_nerf/lr$lr"
+    if [[ "$scene" == scan* ]]; then
+        # DTU scenes
+        occu_thres='0.99'
+    else
+        occu_thres='0.5'
+    fi
     if [[ "$scene" == pinecone* || "$scene" == scan* ]]; then
         # pinecone and DTU scenes
-        occu_thres='0.5'
         scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'
     elif [[ "$scene" == vasedeck* ]]; then
-        occu_thres='0.5'
         scene_bbox='-0.2,0.2,-0.4,0.4,-0.5,0.5'
     else
         # We don't need to bound the synthetic scenes
-        occu_thres='0.5'
         scene_bbox=''
     fi
     out_root="$proj_root/output/surf/$scene"
