@@ -105,12 +105,7 @@ run.
         lr='5e-4'
     fi
     trained_nerf="$proj_root/output/train/${scene}_nerf/lr$lr"
-    if [[ "$scene" == scan* ]]; then
-        # DTU scenes
-        occu_thres='0.99'
-    else
-        occu_thres='0.5'
-    fi
+    occu_thres='0.5'
     if [[ "$scene" == pinecone* || "$scene" == scan* ]]; then
         # pinecone and DTU scenes
         scene_bbox='-0.3,0.3,-0.3,0.3,-0.3,0.3'
