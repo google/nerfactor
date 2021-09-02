@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from os.path import join, basename
 from io import BytesIO
-from os.path import basename
 import numpy as np
 
 from third_party.xiuminglib import xiuminglib as xm
@@ -209,3 +209,110 @@ def listify_matrix(mat):
         for x in row:
             elements.append(x)
     return elements
+
+
+def gen_data(poses, imgs, img_paths, n_vali, outroot):
+    view_folder = '{mode}_{i:03d}'
+
+    # Only the original NeRF and JaxNeRF implementations need these
+    train_json = join(outroot, 'transforms_train.json')
+    vali_json = join(outroot, 'transforms_val.json')
+    test_json = join(outroot, 'transforms_test.json')
+
+    # Recenter poses
+    poses = recenter_poses(poses) # cameras now roughly on a unit sphere
+
+    # Generate a spiral/spherical path for rendering videos
+    poses, test_poses = spherify_poses(poses)
+
+    # Training-validation split
+    n_imgs = imgs.shape[0]
+    ind_vali = np.arange(n_imgs)[:-1:(n_imgs // n_vali)]
+    ind_train = np.array(
+        [x for x in np.arange(n_imgs) if x not in ind_vali])
+
+    # Figure out camera angle
+    fl = poses[0, -1, -1]
+    cam_angle_x = np.arctan2(imgs.shape[2] / 2, fl) * 2
+
+    # Training frames
+    train_meta = {'camera_angle_x': cam_angle_x, 'frames': []}
+    for vi, i in enumerate(ind_train):
+        view_folder_ = view_folder.format(mode='train', i=vi)
+        # Write image
+        img = imgs[i, :, :, :]
+        xm.io.img.write_float(
+            img, join(outroot, view_folder_, 'rgba.png'), clip=True)
+        # Record metadata
+        pose = poses[i, :, :]
+        c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
+        frame_meta = {
+            'file_path': './%s/rgba' % view_folder_, 'rotation': 0,
+            'transform_matrix': c2w.tolist()}
+        train_meta['frames'].append(frame_meta)
+        # Write this frame's metadata to the view folder
+        frame_meta = {
+            'cam_angle_x': cam_angle_x,
+            'cam_transform_mat': ','.join(str(x) for x in c2w.ravel()),
+            'envmap': '', 'envmap_inten': 0, 'imh': img.shape[0],
+            'imw': img.shape[1], 'scene': '', 'spp': 0,
+            'original_path': img_paths[i]}
+        xm.io.json.write(
+            frame_meta, join(outroot, view_folder_, 'metadata.json'))
+
+    # Validation views
+    vali_meta = {'camera_angle_x': cam_angle_x, 'frames': []}
+    for vi, i in enumerate(ind_vali):
+        view_folder_ = view_folder.format(mode='val', i=vi)
+        # Write image
+        img = imgs[i, :, :, :]
+        xm.io.img.write_float(
+            img, join(outroot, view_folder_, 'rgba.png'), clip=True)
+        # Record metadata
+        pose = poses[i, :, :]
+        c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
+        frame_meta = {
+            'file_path': './%s/rgba' % view_folder_, 'rotation': 0,
+            'transform_matrix': c2w.tolist()}
+        vali_meta['frames'].append(frame_meta)
+        # Write this frame's metadata to the view folder
+        frame_meta = {
+            'cam_angle_x': cam_angle_x,
+            'cam_transform_mat': ','.join(str(x) for x in c2w.ravel()),
+            'envmap': '', 'envmap_inten': 0, 'imh': img.shape[0],
+            'imw': img.shape[1], 'scene': '', 'spp': 0,
+            'original_path': img_paths[i]}
+        xm.io.json.write(
+            frame_meta, join(outroot, view_folder_, 'metadata.json'))
+
+    # Write training and validation JSONs
+    xm.io.json.write(train_meta, train_json)
+    xm.io.json.write(vali_meta, vali_json)
+
+    # Test views
+    test_meta = {'camera_angle_x': cam_angle_x, 'frames': []}
+    for i in range(test_poses.shape[0]):
+        view_folder_ = view_folder.format(mode='test', i=i)
+        # Record metadata
+        pose = test_poses[i, :, :]
+        c2w = np.vstack((pose[:3, :4], np.array([0, 0, 0, 1]).reshape(1, 4)))
+        frame_meta = {
+            'file_path': '', 'rotation': 0, 'transform_matrix': c2w.tolist()}
+        test_meta['frames'].append(frame_meta)
+        # Write the nearest input to this test view folder
+        dist = np.linalg.norm(pose[:, 3] - poses[:, :, 3], axis=1)
+        nn_i = np.argmin(dist)
+        nn_img = imgs[nn_i, :, :, :]
+        xm.io.img.write_float(
+            nn_img, join(outroot, view_folder_, 'nn.png'), clip=True)
+        # Write this frame's metadata to the view folder
+        frame_meta = {
+            'cam_angle_x': cam_angle_x,
+            'cam_transform_mat': ','.join(str(x) for x in c2w.ravel()),
+            'envmap': '', 'envmap_inten': 0, 'imh': img.shape[0],
+            'imw': img.shape[1], 'scene': '', 'spp': 0, 'original_path': ''}
+        xm.io.json.write(
+            frame_meta, join(outroot, view_folder_, 'metadata.json'))
+
+    # Write JSON
+    xm.io.json.write(test_meta, test_json)

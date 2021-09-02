@@ -14,12 +14,63 @@
 
 # pylint: disable=invalid-unary-operand-type
 
+from os.path import join
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 from scipy.spatial.qhull import QhullError
 import tensorflow as tf
 
+from third_party.xiuminglib import xiuminglib as xm
 from . import math as mathutil
+
+
+def write_lvis(lvis, fps, out_dir):
+    # Dump raw
+    raw_out = join(out_dir, 'lvis.npy')
+    with open(raw_out, 'wb') as h:
+        np.save(h, lvis)
+    # Visualize the average across all lights as an image
+    vis_out = join(out_dir, 'lvis.png')
+    lvis_avg = np.mean(lvis, axis=2)
+    xm.io.img.write_arr(lvis_avg, vis_out)
+    # Visualize light visibility for each light pixel
+    vis_out = join(out_dir, 'lvis.mp4')
+    frames = []
+    for i in range(lvis.shape[2]): # for each light pixel
+        frame = xm.img.denormalize_float(lvis[:, :, i])
+        frame = np.dstack([frame] * 3)
+        frames.append(frame)
+    xm.vis.video.make_video(frames, outpath=vis_out, fps=fps)
+
+
+def write_xyz(xyz_arr, out_dir):
+    arr = xyz_arr.numpy()
+    # Dump raw
+    raw_out = join(out_dir, 'xyz.npy')
+    with open(raw_out, 'wb') as h:
+        np.save(h, arr)
+    # Visualization
+    vis_out = join(out_dir, 'xyz.png')
+    arr_norm = (arr - arr.min()) / (arr.max() - arr.min())
+    xm.io.img.write_arr(arr_norm, vis_out)
+
+
+def write_normal(arr, out_dir):
+    arr = arr.numpy()
+    # Dump raw
+    raw_out = join(out_dir, 'normal.npy')
+    with open(raw_out, 'wb') as h:
+        np.save(h, arr)
+    # Visualization
+    vis_out = join(out_dir, 'normal.png')
+    arr = (arr + 1) / 2
+    xm.io.img.write_arr(arr, vis_out)
+
+
+def write_alpha(arr, out_dir):
+    arr = arr.numpy()
+    vis_out = join(out_dir, 'alpha.png')
+    xm.io.img.write_arr(arr, vis_out)
 
 
 def get_convex_hull(pts):
@@ -119,7 +170,8 @@ def dir2rusink(a, b):
             axis * tf.matmul(
                 vector, tf.transpose(axis)) * (1 - cos_ang)[:, None] + \
             tf.linalg.cross(
-                tf.tile(axis, (tf.shape(vector)[0], 1)), vector) * sin_ang[:, None]
+                tf.tile(axis, (tf.shape(vector)[0], 1)),
+                vector) * sin_ang[:, None]
 
     # What is the incoming/outgoing direction in the Rusink. frame?
     diff = rot_vec(rot_vec(b, normal, -phi_h), binormal, -theta_h)

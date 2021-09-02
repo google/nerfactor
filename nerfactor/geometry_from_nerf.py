@@ -24,7 +24,7 @@ from brdf.renderer import gen_light_xyz
 from nerfactor import datasets
 from nerfactor import models
 from nerfactor.util import io as ioutil, logging as logutil, \
-    config as configutil, img as imgutil
+    config as configutil, img as imgutil, geom as geomutil
 
 
 flags.DEFINE_string(
@@ -128,14 +128,14 @@ def process_view(config, model, batch):
     alpha_map = tf.reshape(occu, hw * sps)
     alpha_map = average_supersamples(alpha_map, sps)
     alpha_map = tf.clip_by_value(alpha_map, 0., 1.)
-    write_alpha(alpha_map, out_dir)
+    geomutil.write_alpha(alpha_map, out_dir)
 
     # Write XYZ map, whose background filling value is (0, 0, 0)
     surf = rayo + rayd * exp_depth[:, None] # Surface XYZs
     xyz_map = tf.reshape(surf, (hw[0] * sps, hw[1] * sps, 3))
     xyz_map = average_supersamples(xyz_map, sps)
     xyz_map = imgutil.alpha_blend(xyz_map, alpha_map)
-    write_xyz(xyz_map, out_dir)
+    geomutil.write_xyz(xyz_map, out_dir)
 
     # Write normal map, whose background filling value is (0, 1, 0),
     # since using (0, 0, 0) leads to (0, 0, 0) tangents
@@ -146,7 +146,7 @@ def process_view(config, model, batch):
     normal_map = imgutil.alpha_blend(normal_map, alpha_map, normal_map_bg)
     normal_map = tf.linalg.l2_normalize(normal_map, axis=2)
     normal_map = tf.clip_by_value(normal_map, -1., 1.)
-    write_normal(normal_map, out_dir)
+    geomutil.write_normal(normal_map, out_dir)
 
     # ------ Tracing from Object to light
 
@@ -171,7 +171,7 @@ def process_view(config, model, batch):
         lvis[:, :, i] = imgutil.alpha_blend(lvis[:, :, i], alpha_map)
 
     # Write light visibility map
-    write_lvis(lvis, out_dir)
+    geomutil.write_lvis(lvis, FLAGS.fps, out_dir)
 
 
 def compute_light_visibility(model, surf, normal, config, lvis_near=.1):
@@ -376,55 +376,6 @@ def check_bounds(pts):
     in_z = tf.logical_and(pts[:, 2] >= z_min, pts[:, 2] <= z_max)
     in_bounds = tf.logical_and(in_x, tf.logical_and(in_y, in_z))
     return in_bounds
-
-
-def write_lvis(lvis, out_dir):
-    # Dump raw
-    raw_out = join(out_dir, 'lvis.npy')
-    with open(raw_out, 'wb') as h:
-        np.save(h, lvis)
-    # Visualize the average across all lights as an image
-    vis_out = join(out_dir, 'lvis.png')
-    lvis_avg = np.mean(lvis, axis=2)
-    xm.io.img.write_arr(lvis_avg, vis_out)
-    # Visualize light visibility for each light pixel
-    vis_out = join(out_dir, 'lvis.mp4')
-    frames = []
-    for i in range(lvis.shape[2]): # for each light pixel
-        frame = xm.img.denormalize_float(lvis[:, :, i])
-        frame = np.dstack([frame] * 3)
-        frames.append(frame)
-    xm.vis.video.make_video(frames, outpath=vis_out, fps=FLAGS.fps)
-
-
-def write_xyz(xyz_arr, out_dir):
-    arr = xyz_arr.numpy()
-    # Dump raw
-    raw_out = join(out_dir, 'xyz.npy')
-    with open(raw_out, 'wb') as h:
-        np.save(h, arr)
-    # Visualization
-    vis_out = join(out_dir, 'xyz.png')
-    arr_norm = (arr - arr.min()) / (arr.max() - arr.min())
-    xm.io.img.write_arr(arr_norm, vis_out)
-
-
-def write_normal(arr, out_dir):
-    arr = arr.numpy()
-    # Dump raw
-    raw_out = join(out_dir, 'normal.npy')
-    with open(raw_out, 'wb') as h:
-        np.save(h, arr)
-    # Visualization
-    vis_out = join(out_dir, 'normal.png')
-    arr = (arr + 1) / 2
-    xm.io.img.write_arr(arr, vis_out)
-
-
-def write_alpha(arr, out_dir):
-    arr = arr.numpy()
-    vis_out = join(out_dir, 'alpha.png')
-    xm.io.img.write_arr(arr, vis_out)
 
 
 def make_datapipe(config, mode):
