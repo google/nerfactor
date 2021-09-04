@@ -25,6 +25,7 @@ from . import math as mathutil
 
 
 def write_lvis(lvis, fps, out_dir):
+    xm.os.makedirs(out_dir)
     # Dump raw
     raw_out = join(out_dir, 'lvis.npy')
     with open(raw_out, 'wb') as h:
@@ -44,7 +45,10 @@ def write_lvis(lvis, fps, out_dir):
 
 
 def write_xyz(xyz_arr, out_dir):
-    arr = xyz_arr.numpy()
+    arr = xyz_arr
+    if tf.is_tensor(arr):
+        arr = arr.numpy()
+    xm.os.makedirs(out_dir)
     # Dump raw
     raw_out = join(out_dir, 'xyz.npy')
     with open(raw_out, 'wb') as h:
@@ -52,11 +56,12 @@ def write_xyz(xyz_arr, out_dir):
     # Visualization
     vis_out = join(out_dir, 'xyz.png')
     arr_norm = (arr - arr.min()) / (arr.max() - arr.min())
-    xm.io.img.write_arr(arr_norm, vis_out)
+    xm.io.img.write_arr(arr_norm, vis_out, clip=True)
 
 
 def write_normal(arr, out_dir):
-    arr = arr.numpy()
+    if tf.is_tensor(arr):
+        arr = arr.numpy()
     # Dump raw
     raw_out = join(out_dir, 'normal.npy')
     with open(raw_out, 'wb') as h:
@@ -68,7 +73,8 @@ def write_normal(arr, out_dir):
 
 
 def write_alpha(arr, out_dir):
-    arr = arr.numpy()
+    if tf.is_tensor(arr):
+        arr = arr.numpy()
     vis_out = join(out_dir, 'alpha.png')
     xm.io.img.write_arr(arr, vis_out)
 

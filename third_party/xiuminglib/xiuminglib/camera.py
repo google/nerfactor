@@ -224,8 +224,9 @@ class PerspCam:
         cvx_obj = normalize(cvx_obj)
         cvy_obj = normalize(cvy_obj)
         # Compute rotation from obj to cv: R
-        # cvx_obj gives first column of R, cvy_obj second, and cvz_obj third
-        rot_obj2cv = np.vstack((cvx_obj, cvy_obj, cvz_obj)).T
+        rot_cv2obj = np.vstack((cvx_obj, cvy_obj, cvz_obj)).T # such that
+        # rot_cv2obj transforms (1, 0, 0), i.e., cvx, into cvx_obj
+        rot_obj2cv = np.linalg.inv(rot_cv2obj)
         # Extrinsics
         obj2cv = rot_obj2cv.dot( # translate first and then rotate
             np.array([
@@ -238,33 +239,11 @@ class PerspCam:
     def ext_mat(self, o2c):
         o2c = np.array(o2c)
         # Assert matrix structure
-        assert o2c.shape == (3, 4), "This setter accepts only 3x4 extrinsics"
-        r_o2c = o2c[:, :3]
-        assert is_rot_mat(r_o2c), \
-            "The R part of object-to-camera is not a valid rotation matrix"
-        # Compute camera location in object space
-        t_o2c = o2c[:, 3]
-        self.loc = -np.linalg.inv(r_o2c).dot(t_o2c)
-        # Compute look-at in object space
-        cvz_obj = r_o2c[:, 2]
-        self.lookat = cvz_obj + self.loc
-        # Compute up in object space
-        cvx_obj = r_o2c[:, 0]
-        self.up = np.cross(cvx_obj, cvz_obj) / cvz_obj.dot(cvz_obj)
-        # TODO: Why does the following not work?
-        '''
-        # Camera to object space
-        c2o = np.linalg.inv(o2c)
-        # Camera location in object space is the origin of camera space
-        loc = c2o.dot(to_homo([0, 0, 0]))
-        self.loc = from_homo(loc)
-        # Look-at in object space is any point on +z in camera space
-        lookat = c2o.dot(to_homo([0, 0, 1]))
-        self.lookat = from_homo(lookat)
-        # Up vector in object space is -y in camera space
-        up = c2o.dot(to_homo([0, -1, 0]))
-        self.up = from_homo(up)
-        '''
+        assert o2c.shape == (3, 4), \
+            "This setter accepts only 3x4 extrinsics. Set ext_mat_4x4 instead?"
+        # Call the 4x4 setter
+        o2c_4x4 = np.vstack((o2c, [0, 0, 0, 1]))
+        self.ext_mat_4x4 = o2c_4x4
 
     @property
     def ext_mat_4x4(self):
@@ -277,11 +256,23 @@ class PerspCam:
     def ext_mat_4x4(self, o2c):
         o2c = np.array(o2c)
         # Assert matrix structure
-        assert o2c.shape == (4, 4), "This setter accepts only 4x4 extrinsics"
+        assert o2c.shape == (4, 4), \
+            "This setter accepts only 4x4 extrinsics. Set ext_mat instead?"
         assert all(o2c[3, :] == [0, 0, 0, 1]), \
             "Last row of 4x4 extrinsics must be [0, 0, 0, 1]"
-        # Call the 3x4 setter
-        self.ext_mat = o2c[:3, :]
+        assert is_rot_mat(o2c[:3, :3]), \
+            "The R part of object-to-camera is not a valid rotation matrix"
+        # Camera to object space
+        c2o = np.linalg.inv(o2c)
+        # Camera location in object space is the origin of camera space
+        loc = c2o.dot(to_homo([0, 0, 0]))
+        self.loc = from_homo(loc)
+        # Look-at in object space is any point on +z in camera space
+        lookat = c2o.dot(to_homo([0, 0, 1]))
+        self.lookat = from_homo(lookat)
+        # Up vector in object space is -y in camera space
+        up_end = c2o.dot(to_homo([0, -1, 0]))
+        self.up = from_homo(up_end) - self.loc
 
     @property
     def proj_mat(self):
