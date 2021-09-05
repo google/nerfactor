@@ -21,7 +21,6 @@ import numpy as np
 import tensorflow as tf
 
 from third_party.xiuminglib import xiuminglib as xm
-from brdf.renderer import gen_light_xyz
 from nerfactor.models.shape import Model as ShapeModel
 from nerfactor.models.brdf import Model as BRDFModel
 from nerfactor.networks import mlp
@@ -63,9 +62,8 @@ class Model(ShapeModel):
         self._light = None # see the light property
         light_h = self.config.getint('DEFAULT', 'light_h')
         self.light_res = (light_h, 2 * light_h)
-        lxyz, lareas = gen_light_xyz(*self.light_res)
-        self.lxyz = tf.convert_to_tensor(lxyz, dtype=tf.float32)
-        self.lareas = tf.convert_to_tensor(lareas, dtype=tf.float32)
+        lxyz, lareas = self._gen_lights()
+        self.lxyz, self.lareas = lxyz, lareas
         # Novel lighting conditions for relighting at test time:
         olat_inten = self.config.getfloat('DEFAULT', 'olat_inten', fallback=200)
         ambi_inten = self.config.getfloat(
@@ -143,7 +141,7 @@ class Model(ShapeModel):
                 [mlp_width] * mlp_depth, act=['relu'] * mlp_depth,
                 skip_at=[mlp_skip_at])
             net['brdf_z_out'] = mlp.Network([self.z_dim], act=None)
-        # Training from scratch, finetuning, or just using NeRF geometry?
+        # Training from scratch, finetuning, or just using initial geometry?
         if self.shape_mode == 'scratch':
             net['normal_mlp'] = mlp.Network(
                 [mlp_width] * mlp_depth, act=['relu'] * mlp_depth,
@@ -385,13 +383,14 @@ class Model(ShapeModel):
         mlp_layers = self.net['albedo_mlp']
         out_layer = self.net['albedo_out'] # output in [0, 1]
         embedder = self.embedder['xyz']
+        pts_scaled = self.xyz_scale * pts # transparent to the user
 
         def chunk_func(surf):
             surf_embed = embedder(surf)
             albedo = out_layer(mlp_layers(surf_embed))
             return albedo
 
-        albedo = self.chunk_apply(chunk_func, pts, 3, self.mlp_chunk)
+        albedo = self.chunk_apply(chunk_func, pts_scaled, 3, self.mlp_chunk)
         albedo = albedo_scale * albedo + albedo_bias # [bias, scale + bias]
         albedo = tf.debugging.check_numerics(albedo, "Albedo")
         return albedo # Nx3
@@ -400,13 +399,15 @@ class Model(ShapeModel):
         mlp_layers = self.net['brdf_z_mlp']
         out_layer = self.net['brdf_z_out']
         embedder = self.embedder['xyz']
+        pts_scaled = self.xyz_scale * pts # transparent to the user
 
         def chunk_func(surf):
             surf_embed = embedder(surf)
             brdf_z = out_layer(mlp_layers(surf_embed))
             return brdf_z
 
-        brdf_z = self.chunk_apply(chunk_func, pts, self.z_dim, self.mlp_chunk)
+        brdf_z = self.chunk_apply(
+            chunk_func, pts_scaled, self.z_dim, self.mlp_chunk)
         return brdf_z # NxZ
 
     def _eval_brdf_at(self, pts2l, pts2c, normal, albedo, brdf_prop):
@@ -502,7 +503,7 @@ class Model(ShapeModel):
             return loss
         # If we modify the geometry
         if self.shape_mode in ('scratch', 'finetune'):
-            # Predicted values should be close to NeRF values
+            # Predicted values should be close to initial values
             normal_loss = tf.keras.losses.MSE(normal_gt, normal_pred) # N
             lvis_loss = tf.keras.losses.MSE(lvis_gt, lvis_pred) # N
             loss += normal_loss_weight * normal_loss
@@ -725,13 +726,13 @@ class Model(ShapeModel):
             (im1, im2), outpath=join(outdir, 'pred-vs-gt_rgb.apng'))
         if self.shape_mode != 'nerf':
             im1 = xm.vis.text.put_text(
-                img_dict['gt_normal'], "NeRF", **put_text_kwargs)
+                img_dict['gt_normal'], "Initial", **put_text_kwargs)
             im2 = xm.vis.text.put_text(
                 img_dict['pred_normal'], "Prediction", **put_text_kwargs)
             xm.vis.anim.make_anim(
                 (im1, im2), outpath=join(outdir, 'pred-vs-gt_normal.apng'))
             im1 = xm.vis.text.put_text(
-                img_dict['gt_lvis'], "NeRF", **put_text_kwargs)
+                img_dict['gt_lvis'], "Initial", **put_text_kwargs)
             im2 = xm.vis.text.put_text(
                 img_dict['pred_lvis'], "Prediction", **put_text_kwargs)
             xm.vis.anim.make_anim(
@@ -776,7 +777,7 @@ class Model(ShapeModel):
             rowtypes = ['text', 'image', 'image', 'image', 'image']
             if self.shape_mode == 'nerf':
                 row.append(join(batch_dir, 'gt_normal.png'))
-                rowcaps.append("Normal (NeRF)")
+                rowcaps.append("Normal (initial)")
                 rowtypes.append('image')
             else:
                 row.append(join(batch_dir, 'pred-vs-gt_normal.apng'))
@@ -787,7 +788,7 @@ class Model(ShapeModel):
                 rowtypes.append('image')
             if self.shape_mode == 'nerf':
                 row.append(join(batch_dir, 'gt_lvis.png'))
-                rowcaps.append("Light Visibility (NeRF)")
+                rowcaps.append("Light Visibility (initial)")
                 rowtypes.append('image')
             else:
                 row.append(join(batch_dir, 'pred-vs-gt_lvis.apng'))

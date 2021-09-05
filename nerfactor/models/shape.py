@@ -44,15 +44,37 @@ class Model(BaseModel):
         self.embedder = self._init_embedder()
         # ------ Network components
         self.net = self._init_net()
+        # When XYZs are huges, e.g., a few hundreds in the MVS reconstruction
+        # of DTU scenes, scaling them down to roughly below 1 helps the MLPs.
+        self.xyz_scale = self.config.getfloat(
+            'DEFAULT', 'xyz_scale', fallback=1.)
         # ------ Lighting
-        light_h = self.config.getint('DEFAULT', 'light_h')
-        light_w = int(2 * light_h)
-        lxyz, _ = gen_light_xyz(light_h, light_w)
-        self.lxyz = tf.convert_to_tensor(lxyz, dtype=tf.float32)
+        lxyz, _ = self._gen_lights()
+        self.lxyz = lxyz
         #
         self.put_text_param = {
             'text_loc_ratio': 0.05, 'text_size_ratio': 0.05,
             'font_path': xm.const.Path.open_sans_regular}
+
+    def _gen_lights(self):
+        # MVS shape initialization may have different light locations
+        # because the scales and scene centers there are different
+        mvs_root = self.config.get('DEFAULT', 'mvs_root', fallback=None)
+        if mvs_root is None:
+            # Not an MVS initialization
+            light_h = self.config.getint('DEFAULT', 'light_h')
+            light_w = int(2 * light_h)
+            lxyz, lareas = gen_light_xyz(light_h, light_w)
+        else:
+            # MVS initialization needs a file of light locations
+            lxyz_path = join(mvs_root, 'lights.npz')
+            with open(lxyz_path, 'rb') as h:
+                data = np.load(h)
+                data = dict(data)
+            lxyz, lareas = data['lxyzs'], data['lareas']
+        lxyz = tf.convert_to_tensor(lxyz, dtype=tf.float32)
+        lareas = tf.convert_to_tensor(lareas, dtype=tf.float32)
+        return lxyz, lareas
 
     def _init_net(self):
         mlp_width = self.config.getint('DEFAULT', 'mlp_width')
@@ -174,13 +196,14 @@ class Model(BaseModel):
     def _pred_normal_at(self, pts, eps=1e-6):
         mlp_layers = self.net['normal_mlp']
         out_layer = self.net['normal_out']
+        pts_scaled = self.xyz_scale * pts # transparent to the user
 
         def chunk_func(surf):
             surf_embed = self.embedder['xyz'](surf)
             normals = out_layer(mlp_layers(surf_embed))
             return normals
 
-        normal = self.chunk_apply(chunk_func, pts, 3, self.mlp_chunk)
+        normal = self.chunk_apply(chunk_func, pts_scaled, 3, self.mlp_chunk)
         normal += eps # to avoid all-zero normals messing up tangents
         tf.debugging.assert_greater(
             tf.linalg.norm(normal, axis=1), 0.,
@@ -190,12 +213,13 @@ class Model(BaseModel):
     def _pred_lvis_at(self, pts, surf2l):
         mlp_layers = self.net['lvis_mlp']
         out_layer = self.net['lvis_out']
+        pts_scaled = self.xyz_scale * pts # transparent to the user
 
         # Flattening
         n_lights = tf.shape(surf2l)[1]
         surf2l_flat = tf.reshape(surf2l, (-1, 3)) # NLx3
         # Repeating surface points to match light directions
-        surf = tf.tile(pts[:, None, :], (1, n_lights, 1)) # NxLx3
+        surf = tf.tile(pts_scaled[:, None, :], (1, n_lights, 1)) # NxLx3
         surf_flat = tf.reshape(surf, (-1, 3)) # NLx3
 
         def chunk_func(surf_surf2l):
@@ -208,7 +232,7 @@ class Model(BaseModel):
 
         surf_surf2l = tf.concat((surf_flat, surf2l_flat), 1) # NLx6
         lvis_flat = self.chunk_apply(chunk_func, surf_surf2l, 1, self.mlp_chunk)
-        lvis = tf.reshape(lvis_flat, (tf.shape(pts)[0], n_lights)) # NxL
+        lvis = tf.reshape(lvis_flat, (tf.shape(pts_scaled)[0], n_lights)) # NxL
         lvis = tf.debugging.check_numerics(lvis, "Light visibility")
         return lvis # NxL
 
@@ -236,7 +260,7 @@ class Model(BaseModel):
         bg = tf.ones_like(lvis_gt) if self.white_bg else tf.zeros_like(lvis_gt)
         lvis_pred = imgutil.alpha_blend(lvis_pred, alpha, tensor2=bg)
         lvis_gt = imgutil.alpha_blend(lvis_gt, alpha, tensor2=bg)
-        # Predicted values should be close to NeRF values
+        # Predicted values should be close to initial values
         loss = 0
         normal_loss = tf.keras.losses.MSE(normal_gt, normal_pred) # N
         lvis_loss = tf.keras.losses.MSE(lvis_gt, lvis_pred) # N
@@ -311,13 +335,13 @@ class Model(BaseModel):
             'font_color': (0, 0, 0) if self.white_bg else (1, 1, 1),
             'font_ttf': self.put_text_param['font_path']}
         im1 = xm.vis.text.put_text(
-            img_dict['gt_normal'], "NeRF", **put_text_kwargs)
+            img_dict['gt_normal'], "Initial", **put_text_kwargs)
         im2 = xm.vis.text.put_text(
             img_dict['pred_normal'], "Prediction", **put_text_kwargs)
         xm.vis.anim.make_anim(
             (im1, im2), outpath=join(outdir, 'pred-vs-gt_normal.apng'))
         im1 = xm.vis.text.put_text(
-            img_dict['gt_lvis'], "NeRF", **put_text_kwargs)
+            img_dict['gt_lvis'], "Initial", **put_text_kwargs)
         im2 = xm.vis.text.put_text(
             img_dict['pred_lvis'], "Prediction", **put_text_kwargs)
         xm.vis.anim.make_anim(
@@ -368,7 +392,7 @@ class Model(BaseModel):
         bg_color = 'white' if self.white_bg else 'black'
         text_color = 'black' if self.white_bg else 'white'
         html = xm.vis.html.HTML(bgcolor=bg_color, text_color=text_color)
-        header = "Refining and Caching NeRF Geometry"
+        header = "Refining and Caching Geometry Initialization"
         html.add_header(header)
         img_table = html.add_table()
         for r, rcaps, rtypes in zip(rows, caps, types):
