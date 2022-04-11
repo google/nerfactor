@@ -39,7 +39,7 @@ Tips:
 
 If you are using our data, metadata, or pre-trained models
 (new as of 04/10/2022), see the "Downloads" section of the
-[project page](http://people.csail.mit.edu/xiuming/projects/nerfactor/).
+[project page](https://xiuming.info/projects/nerfactor/).
 
 If you are BYOD'ing (bringing your own data), go to [`data_gen/`](./data_gen) to
 either render your own synthetic data or process your real captures.
@@ -55,7 +55,7 @@ Go to [`nerfactor/`](./nerfactor) and follow the instructions there.
 If the issue is code-related, please open an issue here.
 
 For questions, please also consider opening an issue as it may benefit future
-reader. Otherwise, email [Xiuming Zhang](http://people.csail.mit.edu/xiuming).
+reader. Otherwise, email [Xiuming Zhang](https://xiuming.info).
 
 
 ## Acknowledgments
@@ -69,5 +69,6 @@ We thank the authors for making their code publicly available.
 
 ## Changelog
 
+* 04/10/2022: Released pre-trained models.
 * 09/01/2021: Updates related to SIGGRAPH Asia revision.
 * 06/01/2021: Initial release.
