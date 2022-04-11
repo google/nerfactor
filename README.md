@@ -2,7 +2,7 @@
 
 [[Paper]](https://arxiv.org/pdf/2106.01970.pdf)
 [[Video]](https://www.youtube.com/watch?v=UUVSPJlwhPg)
-[[Project]](http://people.csail.mit.edu/xiuming/projects/nerfactor/)
+[[Project]](https://xiuming.info/projects/nerfactor/)
 
 ![teaser](assets/teaser.jpg)
 
@@ -35,9 +35,10 @@ Tips:
   take it out (it should not hurt to just leave it there).
 
 
-## Data
+## Downloads
 
-If you are using our data, see the "Downloads" section of the
+If you are using our data, metadata, or pre-trained models
+(new as of 04/10/2022), see the "Downloads" section of the
 [project page](http://people.csail.mit.edu/xiuming/projects/nerfactor/).
 
 If you are BYOD'ing (bringing your own data), go to [`data_gen/`](./data_gen) to
