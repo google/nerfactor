@@ -59,3 +59,10 @@ and skip the following instructions.
     outroot="$proj_root/data/nerf_real_360_proc/${scene}"
     REPO_DIR="$repo_dir" "$repo_dir/data_gen/nerf_real/make_dataset_run.sh" --scene_dir="$scene_dir" --h="$h" --n_vali="$n_vali" --outroot="$outroot"
     ```
+
+
+## DTU: MVS Shape
+
+On 05/31/2022, we added our main scripts that convert MVS shape output into our
+data format (surface points, normals, light visibility, etc.); please see
+[dtu_mvs/](./dtu_mvs).
