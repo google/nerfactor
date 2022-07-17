@@ -38,7 +38,7 @@ Tips:
 ## Downloads
 
 If you are using our data, metadata, or pre-trained models
-(new as of 04/10/2022), see the "Downloads" section of the
+(new as of 07/17/2022), see the "Downloads" section of the
 [project page](https://xiuming.info/projects/nerfactor/).
 
 If you are BYOD'ing (bringing your own data), go to [`data_gen/`](./data_gen) to
@@ -69,6 +69,7 @@ We thank the authors for making their code publicly available.
 
 ## Changelog
 
+* 07/17/2022: Added the MERL BRDF model to the release of our pre-trained models.
 * 04/10/2022: Released pre-trained models.
 * 09/01/2021: Updates related to SIGGRAPH Asia revision.
 * 06/01/2021: Initial release.
