@@ -8,6 +8,8 @@ brdf/microfacet/render_run.sh
 data_gen/README_private.md
 data_gen/rnr_synth/
 data_gen/philip2019multi_real/
+data_gen/dtu_mvs/*.sh
+data_gen/dtu_mvs/make_dataset_from_raw.py.pixnerf
 
 nerfactor/README_private.md
 nerfactor/models/oxholm.py
