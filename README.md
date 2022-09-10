@@ -53,11 +53,12 @@ Go to [`nerfactor/`](./nerfactor) and follow the instructions there.
 ## Evaluation (New as of 09/10/2022)
 
 We were contacted a few times about the numbers reported in Table 1.
-Here are the sequences we used for those numbers:
+Here are the four sequences we used for generating those numbers:
 `drums_3072`, `ficus_2188`, `hotdog_2163`, `lego_3072`, all of which have
 been released (see the Data section above).
+
 For all sequences, we used these validation views: `0,1,2,3,4,5,6,7`
-and these uniformly sampled test views: `49,99,149,199`.
+and these (uniformly sampled) test views: `49,99,149,199`.
 
 
 ## Issues or Questions?
