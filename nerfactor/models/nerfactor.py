@@ -814,7 +814,12 @@ class Model(ShapeModel):
         html_save(out_html)
 
     def _compile_into_video(self, batch_dirs, out_mp4, fps=12):
-        data_root = self.config.get('DEFAULT', 'data_root')
+        if self.config.get('DEFAULT', 'dataset') == 'mvs_shape':
+            # If MVS initialization, NN is in the MVS folder
+            data_root = self.config.get('DEFAULT', 'mvs_root')
+        else:
+            # If NeRF initialization, NN is in the folder of original input
+            data_root = self.config.get('DEFAULT', 'data_root')
         # Assume batch directory order is the right view order
         batch_dirs = sorted(batch_dirs)
         if self.debug:

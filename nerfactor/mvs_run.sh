@@ -16,8 +16,17 @@
 
 set -e
 
-scene='scan105'
-gpus='3'
+# scan105,scan106,scan110,scan114,scan118,scan122,scan24,scan37,scan40,scan55,
+# scan63,scan65,scan69,scan83,scan97
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 scene gpus[ ...]"
+    exit 1
+fi
+scene="$1"
+gpus="$2"
+shift # shift the remaining arguments
+shift
+
 model='nerfactor_mvs'
 overwrite='True'
 proj_root='/data/vision/billf/intrinsic/sim'
@@ -26,30 +35,21 @@ viewer_prefix='http://vision38.csail.mit.edu' # or just use ''
 
 # I. Shape Pre-Training
 imh='256'
-near='200'
-far='1000'
 use_nerf_alpha='True'
 surf_root="$proj_root/output/surf_mvs/$scene"
 shape_outdir="$proj_root/output/train/${scene}_shape_mvs"
-#REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='shape_mvs.ini' --config_override="imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,mvs_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
+#REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config='shape_mvs.ini' --config_override="imh=$imh,use_nerf_alpha=$use_nerf_alpha,mvs_root=$surf_root,outroot=$shape_outdir,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # II. Joint Optimization (training and validation)
 shape_ckpt="$shape_outdir/lr1e-2/checkpoints/ckpt-2"
 brdf_ckpt="$proj_root/output/train/merl/lr1e-2/checkpoints/ckpt-50"
-xyz_jitter_std=1
+xyz_jitter_std=0.25
 test_envmap_dir="$proj_root/data/envmaps/for-render_h16/test"
 shape_mode='finetune'
 outroot="$proj_root/output/train/${scene}_$model"
-REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config="$model.ini" --config_override="imh=$imh,near=$near,far=$far,use_nerf_alpha=$use_nerf_alpha,mvs_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,shape_mode=$shape_mode,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
-exit
+REPO_DIR="$repo_dir" "$repo_dir/nerfactor/trainvali_run.sh" "$gpus" --config="$model.ini" --config_override="imh=$imh,use_nerf_alpha=$use_nerf_alpha,mvs_root=$surf_root,shape_model_ckpt=$shape_ckpt,brdf_model_ckpt=$brdf_ckpt,xyz_jitter_std=$xyz_jitter_std,test_envmap_dir=$test_envmap_dir,shape_mode=$shape_mode,outroot=$outroot,viewer_prefix=$viewer_prefix,overwrite=$overwrite"
 
 # III. Simultaneous Relighting and View Synthesis (testing)
 ckpt="$outroot/lr5e-3/checkpoints/ckpt-10"
-if [[ "$scene" == pinecone || "$scene" == vasedeck || "$scene" == scan* ]]; then
-    # Real scenes: NeRF & DTU
-    color_correct_albedo='false'
-else
-    color_correct_albedo='true'
-fi
+color_correct_albedo='false'
 REPO_DIR="$repo_dir" "$repo_dir/nerfactor/test_run.sh" "$gpus" --ckpt="$ckpt" --color_correct_albedo="$color_correct_albedo"
-REPO_DIR=/data/vision/billf/intrinsic/sim/code/nerfactor
