@@ -224,7 +224,7 @@ def render_view(cam_transform_mat, cam_angle_x, outdir):
                 glossy_color_exr, cam=cam_obj, select='glossy_color')
             glossy_color = xm.io.exr.read(glossy_color_exr)
         else:
-            glossy_color = np.zero_like(diffuse_color)
+            glossy_color = np.zeros_like(diffuse_color)
         albedo = diffuse_color + glossy_color
         albedo = np.dstack((albedo, alpha))
         xm.io.img.write_arr(albedo, albedo_png, clip=True)
