@@ -72,6 +72,9 @@ def main(_):
 
     brdf_paths = xm.os.sortglob(FLAGS.indir)
     for i, path in enumerate(tqdm(brdf_paths, desc="Training & Validation")):
+        if not path.endswith('.binary'):
+            continue
+            
         brdf = MERL(path=path)
 
         rusink = brdf.tbl[:, :3]
